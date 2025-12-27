@@ -844,6 +844,105 @@ __global__ void Tet_Constraint_StVK_Kernel(const float* X, const int* Tet, const
 	Tet_Temp[t * 12 + 11] = result_matrix[2][3] * rate;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+// True Newton: Analytical elastic gradient kernel for St. Venant-Kirchhoff material
+// Computes negative gradient (force) per vertex: -∇Φ(x)
+///////////////////////////////////////////////////////////////////////////////////////////
+__global__ void TrueNewton_Elastic_Gradient_Kernel(
+	float* Tet_Temp,
+	const float* X,
+	const int* Tet,
+	const float* inv_Dm,
+	const float* Vol,
+	const float lambda,
+	const float mu,
+	int tet_number)
+{
+	int t = blockDim.x * blockIdx.x + threadIdx.x;
+	if (t >= tet_number) return;
+
+	int p0 = Tet[t * 4 + 0] * 3;
+	int p1 = Tet[t * 4 + 1] * 3;
+	int p2 = Tet[t * 4 + 2] * 3;
+	int p3 = Tet[t * 4 + 3] * 3;
+
+	const float* idm = &inv_Dm[t * 9];
+
+	// Compute Ds (current shape)
+	float Ds[9];
+	Ds[0] = X[p1 + 0] - X[p0 + 0];
+	Ds[3] = X[p1 + 1] - X[p0 + 1];
+	Ds[6] = X[p1 + 2] - X[p0 + 2];
+	Ds[1] = X[p2 + 0] - X[p0 + 0];
+	Ds[4] = X[p2 + 1] - X[p0 + 1];
+	Ds[7] = X[p2 + 2] - X[p0 + 2];
+	Ds[2] = X[p3 + 0] - X[p0 + 0];
+	Ds[5] = X[p3 + 1] - X[p0 + 1];
+	Ds[8] = X[p3 + 2] - X[p0 + 2];
+
+	// F = Ds * Dm^{-1}
+	float F[9];
+	dev_Matrix_Product_3(Ds, idm, F);
+
+	// E = (F^T * F - I) / 2
+	float Ft[9];
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			Ft[i * 3 + j] = F[j * 3 + i];
+
+	float E[9];
+	dev_Matrix_Product_3(Ft, F, E);
+	E[0] -= 1.0f; E[4] -= 1.0f; E[8] -= 1.0f;
+	for (int i = 0; i < 9; i++) E[i] *= 0.5f;
+
+	// S = λ*tr(E)*I + 2μ*E (Second Piola-Kirchhoff)
+	float tr_E = E[0] + E[4] + E[8];
+	float S[9];
+	for (int i = 0; i < 9; i++)
+		S[i] = 2.0f * mu * E[i];
+	S[0] += lambda * tr_E;
+	S[4] += lambda * tr_E;
+	S[8] += lambda * tr_E;
+
+	// P = F * S (First Piola-Kirchhoff)
+	float P[9];
+	dev_Matrix_Product_3(F, S, P);
+
+	// Force = -Vol * P * Dm^{-T}
+	float PDmT[9];
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++) {
+			PDmT[i * 3 + j] = 0.0f;
+			for (int k = 0; k < 3; k++)
+				PDmT[i * 3 + j] += P[i * 3 + k] * idm[j * 3 + k];
+		}
+
+	// Map to vertices
+	float half_matrix[3][4];
+	half_matrix[0][0] = -idm[0] - idm[3] - idm[6];
+	half_matrix[0][1] = idm[0];
+	half_matrix[0][2] = idm[3];
+	half_matrix[0][3] = idm[6];
+	half_matrix[1][0] = -idm[1] - idm[4] - idm[7];
+	half_matrix[1][1] = idm[1];
+	half_matrix[1][2] = idm[4];
+	half_matrix[1][3] = idm[7];
+	half_matrix[2][0] = -idm[2] - idm[5] - idm[8];
+	half_matrix[2][1] = idm[2];
+	half_matrix[2][2] = idm[5];
+	half_matrix[2][3] = idm[8];
+
+	float result_matrix[3][4];
+	dev_Matrix_Product(PDmT, &half_matrix[0][0], &result_matrix[0][0], 3, 3, 4);
+
+	float rate = -Vol[t];
+	for (int v = 0; v < 4; v++) {
+		Tet_Temp[t * 12 + v * 3 + 0] = result_matrix[0][v] * rate;
+		Tet_Temp[t * 12 + v * 3 + 1] = result_matrix[1][v] * rate;
+		Tet_Temp[t * 12 + v * 3 + 2] = result_matrix[2][v] * rate;
+	}
+}
+
 __global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, const float* inv_Dm, const float* Vol, const float lambda, const float mu, const int *update_offset, int tet_number)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
@@ -1661,6 +1760,7 @@ public:
 	int use_WHM;
 	int enable_PD;
 	int use_Hessian;
+	int use_true_newton;
 
 	TYPE*	TQ;
 	TYPE*	Tet_Temp;
@@ -1693,6 +1793,10 @@ public:
 	TYPE* dev_Energy;
 	TYPE* dev_Energy_Temp;
 	TYPE* dev_target_X;
+
+	// True Newton method
+	TYPE* dev_ls_temp_X;
+	TYPE* dev_newton_gradient;
 
 	//for conjugated gradient
 	TYPE **dev_temp_X;
@@ -2288,6 +2392,8 @@ public:
 		err = cudaMalloc((void**)&dev_init_B,		sizeof(TYPE)*3*number);
 		err = cudaMalloc(&dev_Energy, sizeof(TYPE));
 		err = cudaMalloc(&dev_target_X, sizeof(TYPE) * 3 * number);
+		err = cudaMalloc(&dev_ls_temp_X, sizeof(TYPE) * 3 * number);
+		err = cudaMalloc(&dev_newton_gradient, sizeof(TYPE) * 3 * number);
 
 		dev_temp_X = (TYPE**)malloc(sizeof(TYPE*)*(layer + 1));
 		dev_deltaX = (TYPE**)malloc(sizeof(TYPE*)*(layer + 1));
@@ -4649,6 +4755,44 @@ public:
 		*E += e;
 	}
 
+	// backtracking line search
+	TYPE lineSearch(const TYPE* search_dir, TYPE t, TYPE initial_alpha = 1.0)
+	{
+		const TYPE rho = 0.5;   // Backtracking factor
+		const int max_iters = 20;
+
+		// Current energy and gradient
+		TYPE E0;
+		computeEnergy(&E0, dev_X, t);
+
+		// Compute directional derivative: g^T * p
+		TYPE dir_deriv;
+		cublasStatus_t stat = cublasSdot(cublasHandle, 3 * number,
+			dev_newton_gradient, 1, (float*)search_dir, 1, &dir_deriv);
+
+		TYPE alpha = initial_alpha;
+
+		for (int i = 0; i < max_iters; i++)
+		{
+			// X_new = X + alpha * search_dir
+			cublasScopy(cublasHandle, 3 * number, dev_X, 1, dev_ls_temp_X, 1);
+			cublasSaxpy(cublasHandle, 3 * number, &alpha, (float*)search_dir, 1, dev_ls_temp_X, 1);
+
+			// Compute energy at new position
+			TYPE E_new;
+			computeEnergy(&E_new, dev_ls_temp_X, t);
+
+			if (E_new <= E0)
+			{
+				return alpha;
+			}
+
+			alpha *= rho;
+		}
+
+		return alpha;
+	}
+
 	void Update(TYPE t, int iterations, TYPE dir[])
 	{
 		cudaError_t cudaErr;
@@ -4835,8 +4979,16 @@ public:
 				}
 
 
-				Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock >> > (dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, elasticity, tet_number);
-				//Tet_Constraint_StVK_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock >> > (dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, lambda, mu, tet_number);
+				// Compute elastic gradient
+				if (use_true_newton)
+				{
+					TrueNewton_Elastic_Gradient_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock >> > \
+						(dev_Tet_Temp, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, lambda, mu, tet_number);
+				}
+				else
+				{
+					Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock >> > (dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, elasticity, tet_number);
+				}
 
 				cudaErr = cudaMemset(dev_B[layer], 0, sizeof(float) * dims[layer]);
 				Energy_Gradient_Kernel << <(number + threadsPerBlock-1) / threadsPerBlock/*blocksPerGrid*/, threadsPerBlock >> > (dev_B[layer], dev_Tet_Temp, dev_VTT, dev_vtt_num, \
@@ -4844,6 +4996,25 @@ public:
 					dev_index2vertex[layer], control_mag, collision_mag, number);
 
 				Inertia_Gradient_Kernel << < (number + threadsPerBlock-1) / threadsPerBlock/*blocksPerGrid*/, threadsPerBlock >> > (dev_B[layer], dev_inertia_X, dev_X, dev_vertex2index[layer], dev_M, 1.0 / t, number);
+
+				if (use_true_newton)
+				{
+					cublasScopy(cublasHandle, 3 * number, dev_B[layer], 1, dev_newton_gradient, 1);
+
+					// Check convergence: ||gradient||_inf < tolerance
+					int max_idx;
+					cublasIsamax(cublasHandle, 3 * number, dev_newton_gradient, 1, &max_idx);
+					TYPE grad_max;
+					cudaMemcpy(&grad_max, dev_newton_gradient + (max_idx - 1), sizeof(TYPE), cudaMemcpyDeviceToHost);
+					grad_max = fabsf(grad_max);
+
+					const TYPE tol = 1e-6;
+					if (grad_max < tol)
+					{
+						printf("Newton converged at iteration %d: ||grad||_inf = %.2e\n", it, grad_max);
+						break;
+					}
+				}
 
 				//cudaMemcpy(GRADIENT, dev_B[layer], sizeof(float) * 3 * number, cudaMemcpyDeviceToHost);
 
@@ -5200,8 +5371,15 @@ public:
 				//delete[] temp_out;
 				//delete[] out;
 
+				if (use_true_newton)
+				{
+					// Line search to find optimal step size
+					TYPE alpha = lineSearch(dev_deltaX[layer], t);
+					cublasSscal(cublasHandle, 3 * number, &alpha, dev_deltaX[layer], 1);
+				}
+
 				Update_DeltaX_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
-				if (use_WHM)
+				if (use_WHM && !use_true_newton)
 				{
 					if (it <= 10) omega = 1;
 					else if (it == 11) omega = 2 / (2 - rho * rho);
