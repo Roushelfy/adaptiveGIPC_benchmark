@@ -2,7 +2,9 @@
 #define __FILE_IO_BMP_IO_H__
 
 #include <stdio.h>
+#ifdef _WIN32
 #include <windows.h>
+#endif
 #include "MY_MATH.h"
 // We only consider 24 bits RGB color BMP files.
 // The alpha channel is simply ignored.
@@ -60,6 +62,7 @@ bool BMP_Read(const char *filename, ARRAY_2D<SPECTRUM<T> >* &pixels, ARRAY_2D<T>
 	return false;
 }*/
 
+#ifdef _WIN32
 bool BMP_Write(const char *filename, float *pixels, int width, int height)
 {
 	//Preparing the BITMAP data structure from IMAGE object.
@@ -129,6 +132,14 @@ bool BMP_Write(const char *filename, float *pixels, int width, int height)
 	DeleteObject(bmp_handle);
 	return true;
 }
+#else
+// Linux stub - BMP writing not supported on Linux
+bool BMP_Write(const char *filename, float *pixels, int width, int height)
+{
+	printf("Warning: BMP_Write is not supported on Linux. File: %s\n", filename);
+	return false;
+}
+#endif
 
 
 #endif //__FILE_IO_BMP_IO_H__

@@ -30,7 +30,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////
 #ifndef __WHMIN_MESH_H__
 #define __WHMIN_MESH_H__
-#include <gl/glut.h>
+#include <GL/glut.h>
 
 #include <stdio.h>
 #include <fstream>
