@@ -1,0 +1,6 @@
+# Build directories
+build/
+linux_cuda12/build/
+
+# Documentation files
+*.md
