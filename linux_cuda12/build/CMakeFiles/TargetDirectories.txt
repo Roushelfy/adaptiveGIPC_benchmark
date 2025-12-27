@@ -1,0 +1,8 @@
+/home/asdf/PainlessMG/linux_cuda12/build/CMakeFiles/edit_cache.dir
+/home/asdf/PainlessMG/linux_cuda12/build/CMakeFiles/rebuild_cache.dir
+/home/asdf/PainlessMG/linux_cuda12/build/armadillo/CMakeFiles/armadillo_sim.dir
+/home/asdf/PainlessMG/linux_cuda12/build/armadillo/CMakeFiles/edit_cache.dir
+/home/asdf/PainlessMG/linux_cuda12/build/armadillo/CMakeFiles/rebuild_cache.dir
+/home/asdf/PainlessMG/linux_cuda12/build/cloth/CMakeFiles/cloth_sim.dir
+/home/asdf/PainlessMG/linux_cuda12/build/cloth/CMakeFiles/edit_cache.dir
+/home/asdf/PainlessMG/linux_cuda12/build/cloth/CMakeFiles/rebuild_cache.dir
