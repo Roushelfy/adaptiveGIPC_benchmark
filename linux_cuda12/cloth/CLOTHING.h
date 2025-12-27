@@ -48,6 +48,7 @@ public:
 	using CUDA_PROJECTIVE_MESH<TYPE>::use_Hessian;
 	using CUDA_PROJECTIVE_MESH<TYPE>::use_WHM;
 	using CUDA_PROJECTIVE_MESH<TYPE>::enable_PD;
+	using CUDA_PROJECTIVE_MESH<TYPE>::use_true_newton;
 	using CUDA_PROJECTIVE_MESH<TYPE>::layer;
 	using CUDA_PROJECTIVE_MESH<TYPE>::handles_num;
 	using CUDA_PROJECTIVE_MESH<TYPE>::stored_as_dense;
@@ -101,7 +102,7 @@ public:
 		//lap_damping = 4;
 
 #ifdef SETTINGF
-		fscanf(f, "%d %d %d %d", &pd_iters, &use_Hessian, &use_WHM, &enable_PD);
+		fscanf(f, "%d %d %d %d %d", &pd_iters, &use_Hessian, &use_WHM, &enable_PD, &use_true_newton);
 		fscanf(f, "%d", &layer);
 		handles_num = new int[layer + 1];
 		for (int i = 0; i < layer; i++)

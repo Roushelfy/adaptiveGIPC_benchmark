@@ -4755,42 +4755,34 @@ public:
 		*E += e;
 	}
 
-	// backtracking line search
-	TYPE lineSearch(const TYPE* search_dir, TYPE t, TYPE initial_alpha = 1.0)
+	void lineSearch(TYPE t)
 	{
-		const TYPE rho = 0.5;   // Backtracking factor
+		float alpha = 0.003, beta = 0.1;
 		const int max_iters = 20;
+		const float ls_epsilon = 1e-6;
 
-		// Current energy and gradient
-		TYPE E0;
-		computeEnergy(&E0, dev_X, t);
-
-		// Compute directional derivative: g^T * p
-		TYPE dir_deriv;
-		cublasStatus_t stat = cublasSdot(cublasHandle, 3 * number,
-			dev_newton_gradient, 1, (float*)search_dir, 1, &dir_deriv);
-
-		TYPE alpha = initial_alpha;
+		cudaMemcpy(dev_ls_temp_X, dev_X, sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
+		float E0;
+		computeEnergy(&E0, dev_ls_temp_X, t);
 
 		for (int i = 0; i < max_iters; i++)
 		{
-			// X_new = X + alpha * search_dir
-			cublasScopy(cublasHandle, 3 * number, dev_X, 1, dev_ls_temp_X, 1);
-			cublasSaxpy(cublasHandle, 3 * number, &alpha, (float*)search_dir, 1, dev_ls_temp_X, 1);
+			Update_DeltaX_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> >
+				(dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
 
-			// Compute energy at new position
-			TYPE E_new;
-			computeEnergy(&E_new, dev_ls_temp_X, t);
+			float E = 0, L = 0;
+			computeEnergy(&E, dev_X, t);
+			cublasSdot(cublasHandle, 3 * number, dev_deltaX[layer], 1, dev_newton_gradient, 1, &L);
+			E += L * alpha * t;
 
-			if (E_new <= E0)
-			{
-				return alpha;
-			}
+			if (E < E0 + ls_epsilon) return;
 
-			alpha *= rho;
+			cudaMemcpy(dev_X, dev_ls_temp_X, sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
+			cublasSscal(cublasHandle, 3 * number, &beta, dev_deltaX[layer], 1);
 		}
 
-		return alpha;
+		Update_DeltaX_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> >
+			(dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
 	}
 
 	void Update(TYPE t, int iterations, TYPE dir[])
@@ -5373,12 +5365,13 @@ public:
 
 				if (use_true_newton)
 				{
-					// Line search to find optimal step size
-					TYPE alpha = lineSearch(dev_deltaX[layer], t);
-					cublasSscal(cublasHandle, 3 * number, &alpha, dev_deltaX[layer], 1);
+					// Line search to find optimal step size and update position
+					lineSearch(t);
 				}
-
-				Update_DeltaX_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
+				else
+				{
+					Update_DeltaX_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
+				}
 				if (use_WHM && !use_true_newton)
 				{
 					if (it <= 10) omega = 1;

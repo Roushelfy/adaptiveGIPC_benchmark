@@ -1390,6 +1390,7 @@ public:
 	int use_WHM;
 	int enable_benchmark;
 	int enable_PD;
+	int use_true_newton;
 
 	//scene settings
 	object *objects;
@@ -1422,6 +1423,10 @@ public:
 	int** dev_update_flag;
 	TYPE*	dev_init_B;		// Initialized momentum condition in B
 	TYPE*	dev_target_X;
+
+	// True Newton method
+	TYPE* dev_ls_temp_X;
+	TYPE* dev_newton_gradient;
 
 	//for conjugated gradient
 	TYPE **dev_temp_X;
@@ -1923,6 +1928,8 @@ public:
 		err = cudaMalloc((void**)&dev_fixed_X, sizeof(TYPE) * 3 * number);
 		err = cudaMalloc((void**)&dev_init_B, sizeof(TYPE) * 3 * number);
 		err = cudaMalloc(&dev_target_X, sizeof(TYPE) * 3 * number);
+		err = cudaMalloc(&dev_ls_temp_X, sizeof(TYPE) * 3 * number);
+		err = cudaMalloc(&dev_newton_gradient, sizeof(TYPE) * 3 * number);
 
 
 		dev_temp_X = (TYPE**)malloc(sizeof(TYPE*)*(layer + 1));
@@ -3853,6 +3860,44 @@ public:
 		cudaMemcpy(E, dev_Energy, sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
+	void lineSearch(TYPE t)
+	{
+		float alpha = 0.003, beta = 0.5;
+		const int max_iters = 20;
+		const float ls_epsilon = 1e-6;
+
+		cudaMemcpy(dev_temp_X[layer], dev_X, sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
+		float E0;
+		computeEnergy(&E0, dev_temp_X[layer], t);
+
+		for (int i = 0; i < max_iters; i++)
+		{
+#ifdef NO_ORDER
+			cublasStatus = cublasSaxpy(cublasHandle, dims[layer], &one, dev_deltaX[layer], 1, dev_X, 1);
+#else
+			Update_DeltaX_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> >
+				(dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
+#endif
+
+			float E = 0, L = 0;
+			computeEnergy(&E, dev_X, t);
+			cublasSdot(cublasHandle, 3 * number, dev_deltaX[layer], 1, dev_newton_gradient, 1, &L);
+			E += L * alpha * t;
+
+			if (E < E0 + ls_epsilon) return;
+
+			cudaMemcpy(dev_X, dev_temp_X[layer], sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
+			cublasSscal(cublasHandle, 3 * number, &beta, dev_deltaX[layer], 1);
+		}
+
+#ifdef NO_ORDER
+		cublasStatus = cublasSaxpy(cublasHandle, dims[layer], &one, dev_deltaX[layer], 1, dev_X, 1);
+#else
+		Update_DeltaX_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> >
+			(dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
+#endif
+	}
+
 	void computeHessian(TYPE t)
 	{
 		cudaMemset(dev_MF_Val, 0, sizeof(float)*MF_nnz * 9);
@@ -3889,35 +3934,6 @@ public:
 
 		}
 
-	}
-
-	void lineSearch(TYPE t)
-	{
-		float alpha = 0.003, beta = 0.1;
-		cudaMemcpy(dev_temp_X[layer], dev_X, sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
-		float E0;
-		computeEnergy(&E0, dev_temp_X[layer], t);
-		for (int i = 0; i < 3; i++)
-		{
-#ifdef NO_ORDER
-			cublasStatus = cublasSaxpy(cublasHandle, dims[layer], &one, dev_deltaX[layer], 1, dev_X, 1);
-#else
-			Update_DeltaX_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
-#endif
-			float E = 0, L = 0;
-			computeEnergy(&E, dev_X, t);
-			cublasSdot(cublasHandle, 3 * number, dev_deltaX[layer], 1, dev_B[layer], 1, &L);
-			E += L * alpha*t;
-			if (E < E0 + EPSILON) return;
-			cudaMemcpy(dev_X, dev_temp_X[layer], sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
-			cublasSscal(cublasHandle, 3 * number, &beta, dev_deltaX[layer], 1);
-			//printf("should not occur in PD\n");
-		}
-#ifdef NO_ORDER
-		cublasStatus = cublasSaxpy(cublasHandle, dims[layer], &one, dev_deltaX[layer], 1, dev_X, 1);
-#else
-		Update_DeltaX_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
-#endif
 	}
 
 	void Update(TYPE t, int iterations, TYPE dir[])
@@ -4100,6 +4116,25 @@ public:
 
 				Inertia_Gradient_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_B[layer], dev_X, dev_inertia_X , dev_M, 1.0 / t, dev_vertex2index[layer], number);
 
+				if (use_true_newton)
+				{
+					cublasScopy(cublasHandle, 3 * number, dev_B[layer], 1, dev_newton_gradient, 1);
+
+					// Check convergence: ||gradient||_inf < tolerance
+					int max_idx;
+					cublasIsamax(cublasHandle, 3 * number, dev_newton_gradient, 1, &max_idx);
+					TYPE grad_max;
+					cudaMemcpy(&grad_max, dev_newton_gradient + (max_idx - 1), sizeof(TYPE), cudaMemcpyDeviceToHost);
+					grad_max = fabsf(grad_max);
+
+					const TYPE tol = 1e-6;
+					if (grad_max < tol)
+					{
+						printf("Newton converged at iteration %d: ||grad||_inf = %.2e\n", it, grad_max);
+						break;
+					}
+				}
+
 				cublasScopy(cublasHandle, dims[layer], dev_B[layer], 1, dev_R[layer], 1);
 
 				cudaErr = cudaMemset(dev_deltaX[layer], 0, sizeof(float) * dims[layer]);
@@ -4228,11 +4263,19 @@ public:
 				//performGaussSeidelIteration(now_Layer, 1, tol);
 				performGaussSeidelIteration(now_Layer, 1, tol);
 #endif
+				if (use_true_newton)
+				{
+					// Line search to find optimal step size and update position
+					lineSearch(t);
+				}
+				else
+				{
 #ifdef NO_ORDER
-				cublasStatus = cublasSaxpy(cublasHandle, dims[layer], &one, dev_deltaX[layer], 1, dev_X, 1);
+					cublasStatus = cublasSaxpy(cublasHandle, dims[layer], &one, dev_deltaX[layer], 1, dev_X, 1);
 #else
-				Update_DeltaX_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
+					Update_DeltaX_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
 #endif
+				}
 				//cudaMemcpy(dev_temp_X[layer], dev_X, sizeof(float)*dims[layer], cudaMemcpyDeviceToDevice);
 				//cublasSaxpy(cublasHandle, dims[layer], &minus_one, dev_target_X, 1, dev_temp_X[layer], 1);
 				//float metric;
@@ -4247,7 +4290,7 @@ public:
 				//printf("metric:%.10f\n", metric);
 				//delete[] temp_vec;
 
-				//lineSearch(t);
+				// lineSearch(t);
 				if (use_WHM)
 				{
 					if (it <= 10) omega = 1;
