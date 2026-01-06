@@ -261,6 +261,14 @@ public:
 			}
 		}
 
+		// Read time_step if available
+		float temp_time_step;
+		if (fscanf(f, "%f", &temp_time_step) == 1) {
+			time_step = temp_time_step;
+			printf("Loaded time_step = %f from setting.txt\n", time_step);
+		}
+		fclose(f);
+
 #else
 #ifdef SETTING1
 		layer = 0;

@@ -36,6 +36,10 @@
 //#define enable_PD
 //#define WHM
 
+// Forward declare time_step and sub_step before including CLOTHING.h
+extern float time_step;
+extern int sub_step;
+
 #include "CLOTHING.h"
 #define	USE_CUDA
 #define NO_MOTION			0
@@ -207,27 +211,43 @@ public:
 	static int		render_mode;
 	static int		motion_mode, mouse_x, mouse_y;
 
-	
-	OPENGL_DRIVER(int *argc,char **argv)
+
+	OPENGL_DRIVER(int *argc,char **argv, bool use_gui = true)
 	{
-		glutInit(argc, argv);
-		glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB|GLUT_DEPTH);
-		glutInitWindowPosition(300,100);
-		glutInitWindowSize(screen_width, screen_height);
-		glutCreateWindow ("Experimental Cloth");
-		glutDisplayFunc(Handle_Display);
-		glutReshapeFunc(Handle_Reshape);
-		glutKeyboardFunc(Handle_Keypress);
-		glutMouseFunc(Handle_Mouse_Click);
-		glutMotionFunc(Handle_Mouse_Move);
-		glutSpecialFunc(Handle_SpecialKeypress);
-		glutIdleFunc(Handle_Idle);
-		Handle_Reshape(screen_width, screen_height);
-		
 		clothing.Initialize(time_step/sub_step);
 
-		Init_GLSL();
-		glutMainLoop();
+		if (use_gui) {
+			glutInit(argc, argv);
+			glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB|GLUT_DEPTH);
+			glutInitWindowPosition(300,100);
+			glutInitWindowSize(screen_width, screen_height);
+			glutCreateWindow ("Experimental Cloth");
+			glutDisplayFunc(Handle_Display);
+			glutReshapeFunc(Handle_Reshape);
+			glutKeyboardFunc(Handle_Keypress);
+			glutMouseFunc(Handle_Mouse_Click);
+			glutMotionFunc(Handle_Mouse_Move);
+			glutSpecialFunc(Handle_SpecialKeypress);
+			glutIdleFunc(Handle_Idle);
+			Handle_Reshape(screen_width, screen_height);
+
+			Init_GLSL();
+			glutMainLoop();
+		} else {
+			// Headless mode: run simulation without GUI
+			printf("Running headless simulation...\n");
+			printf("Press Ctrl+C to stop.\n\n");
+
+			int frame = 0;
+			while (true) {
+				Update(time_step/sub_step);
+				frame++;
+
+				if (frame % 30 == 0) {
+					printf("Frame: %d\n", frame);
+				}
+			}
+		}
 	}
 
 	~OPENGL_DRIVER()
