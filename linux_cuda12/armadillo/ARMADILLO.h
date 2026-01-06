@@ -40,6 +40,7 @@ public:
 	// Bring base class members into scope
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::benchmark;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::enable_benchmark;
+	using CUDA_PROJECTIVE_TET_MESH<TYPE>::enable_debug;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::number;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::tet_number;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::X;
@@ -91,6 +92,11 @@ public:
 			printf("enable benchmark\n");
 			if (!benchmark)
 				printf("no benchmark file\n");
+		}
+		fscanf(f, "%d", &enable_debug);
+		if (enable_debug)
+		{
+			printf("Debug output enabled\n");
 		}
 
 		//Read_Original_File("sorted_armadillo");

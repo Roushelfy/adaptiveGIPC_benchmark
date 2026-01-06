@@ -1389,6 +1389,7 @@ public:
 	int use_Hessian;
 	int use_WHM;
 	int enable_benchmark;
+	int enable_debug;
 	int enable_PD;
 	int use_true_newton;
 

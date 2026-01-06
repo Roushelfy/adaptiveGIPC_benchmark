@@ -37,6 +37,7 @@ public:
 	// Bring base class members into scope
 	using CUDA_PROJECTIVE_MESH<TYPE>::benchmark;
 	using CUDA_PROJECTIVE_MESH<TYPE>::enable_benchmark;
+	using CUDA_PROJECTIVE_MESH<TYPE>::enable_debug;
 	using CUDA_PROJECTIVE_MESH<TYPE>::number;
 	using CUDA_PROJECTIVE_MESH<TYPE>::fixed;
 	using CUDA_PROJECTIVE_MESH<TYPE>::rho;
@@ -81,6 +82,11 @@ public:
 			printf("enable benchmark\n");
 			if (!benchmark)
 				printf("no benchmark file\n");
+		}
+		fscanf(f, "%d", &enable_debug);
+		if (enable_debug)
+		{
+			printf("Debug output enabled\n");
 		}
 
 		Make_A_Plane(plane_size, plane_size, -0.5, 0, 0);

@@ -1757,6 +1757,7 @@ public:
 	//simualtion settings
 	int pd_iters;
 	int enable_benchmark;
+	int enable_debug;
 	int use_WHM;
 	int enable_PD;
 	int use_Hessian;
@@ -4858,11 +4859,16 @@ public:
 
 			cudaErr = cudaGetLastError();
 
-			if (enable_benchmark & 1)
+			if (enable_debug || (enable_benchmark & 1))
 			{
 				float min_E;
 				computeEnergy(&min_E, dev_target_X, t);
-				fprintf(benchmark, "%.10f\n", min_E);
+				if ((enable_benchmark & 1) && benchmark)
+					fprintf(benchmark, "%.10f\n", min_E);
+				if (enable_debug)
+				{
+					printf("[Debug] Initial energy: %.10f\n", min_E);
+				}
 			}
 
 			// Our Step 2: MultiGrid Method
@@ -5000,6 +5006,11 @@ public:
 					cudaMemcpy(&grad_max, dev_newton_gradient + (max_idx - 1), sizeof(TYPE), cudaMemcpyDeviceToHost);
 					grad_max = fabsf(grad_max);
 
+					if (enable_debug)
+					{
+						printf("[Debug] Iter %d: ||gradient||_inf = %.6e\n", it, grad_max);
+					}
+
 					const TYPE tol = 1e-6;
 					if (grad_max < tol)
 					{
@@ -5054,14 +5065,19 @@ public:
 				//	printf("\n");
 				//}
 
-				if (enable_benchmark & 1)
+				if (enable_debug || (enable_benchmark & 1))
 				{
 					cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &g_norm);
 					computeEnergy(&E, dev_X, t);
 					cudaMemcpy(dev_temp_X[layer], dev_X, sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
 					cublasSaxpy(cublasHandle, 3 * number, &minus_one, dev_target_X, 1, dev_temp_X[layer], 1);
 					cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_temp_X[layer], 1, dev_temp_X[layer], 1, &e_norm);
-					fprintf(benchmark, "%.10f %.10f %.10f %.10f\n", iter_time/*timer.Get_Time()*/, g_norm, E, e_norm);
+					if ((enable_benchmark & 1) && benchmark)
+						fprintf(benchmark, "%.10f %.10f %.10f %.10f\n", iter_time/*timer.Get_Time()*/, g_norm, E, e_norm);
+					if (enable_debug)
+					{
+						printf("[Debug] Iter %d: ||gradient||^2 = %.6e, Energy = %.6e\n", it, g_norm, E);
+					}
 				}
 
 				if (timer.Get_Time() > 10) break;
