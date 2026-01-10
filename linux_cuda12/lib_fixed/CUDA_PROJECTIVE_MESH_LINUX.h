@@ -1392,6 +1392,7 @@ public:
 	int enable_debug;
 	int enable_PD;
 	int use_true_newton;
+	int v_cycles;
 
 	//scene settings
 	object *objects;

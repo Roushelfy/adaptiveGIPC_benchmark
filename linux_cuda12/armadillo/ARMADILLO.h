@@ -62,6 +62,7 @@ public:
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::stored_as_dense;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::stored_as_LDU;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::settings;
+	using CUDA_PROJECTIVE_TET_MESH<TYPE>::v_cycles;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::rho;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::objects_num;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::objects;
@@ -240,6 +241,11 @@ public:
 				settings.push_back(iterationSetting{ DownSample,-1 });
 			else if (!strcmp(buf, "US"))
 				settings.push_back(iterationSetting{ UpSample,-1 });
+		}
+		fscanf(f, "%d", &v_cycles);
+		if (v_cycles < 1) v_cycles = 1;
+		if (enable_debug) {
+			printf("V-cycles per iteration = %d\n", v_cycles);
 		}
 		fscanf(f, "%f", &rho);
 		fscanf(f, "%d", &objects_num);
