@@ -1092,6 +1092,172 @@ __global__ void Hessian_Diag_Kernel(float *A_Diag_Val, const float *M, const flo
 
 }
 
+// Compute eigenvalues of 3x3 symmetric matrix using analytical formula
+__device__ void compute_eigenvalues_3x3_symmetric(const float* A, float* lambda)
+{
+	// A must be symmetric: A[i*3+j] == A[j*3+i]
+	// Uses characteristic polynomial method
+
+	float a = A[0], b = A[1], c = A[2];
+	float d = A[4], e = A[5];
+	float f = A[8];
+
+	// Invariants
+	float I1 = a + d + f;  // trace
+	float I2 = a*d + a*f + d*f - b*b - c*c - e*e;
+	float I3 = a*d*f + 2*b*c*e - a*e*e - d*c*c - f*b*b;  // determinant
+
+	// Characteristic polynomial: λ³ - I1·λ² + I2·λ - I3 = 0
+	// Use Cardano's formula
+	float p = I2 - I1*I1/3.0f;
+	float q = 2.0f*I1*I1*I1/27.0f - I1*I2/3.0f + I3;
+
+	float discriminant = q*q/4.0f + p*p*p/27.0f;
+
+	if (discriminant > 0 || fabsf(p) < 1e-12f)
+	{
+		// Use simpler approximation for nearly diagonal matrices
+		lambda[0] = a;
+		lambda[1] = d;
+		lambda[2] = f;
+	}
+	else
+	{
+		// Three real roots
+		float r = sqrtf(-p*p*p/27.0f);
+		float phi = acosf(-q / (2.0f*r));
+		float s = 2.0f * powf(r, 1.0f/3.0f);
+
+		lambda[0] = I1/3.0f + s * cosf(phi/3.0f);
+		lambda[1] = I1/3.0f + s * cosf((phi + 2.0f*3.14159265f)/3.0f);
+		lambda[2] = I1/3.0f + s * cosf((phi + 4.0f*3.14159265f)/3.0f);
+	}
+}
+
+// Project matrix to PSD by eigenvalue decomposition
+__device__ void make_psd_3x3(float* H, float min_eig)
+{
+	// Symmetrize first
+	float A[9];
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			A[i*3 + j] = 0.5f * (H[i*3 + j] + H[j*3 + i]);
+
+	// For 3x3 case, use simplified eigenvalue projection
+	// Compute eigenvalues
+	float lambda[3];
+	compute_eigenvalues_3x3_symmetric(A, lambda);
+
+	// Check if any eigenvalue is negative or too small
+	bool needs_projection = false;
+	for (int i = 0; i < 3; i++)
+		if (lambda[i] < min_eig)
+			needs_projection = true;
+
+	if (!needs_projection)
+	{
+		// Just copy back symmetrized matrix
+		for (int i = 0; i < 9; i++)
+			H[i] = A[i];
+		return;
+	}
+
+	// Simple diagonal regularization (more stable than full EVD on GPU)
+	// Add shift to make smallest eigenvalue = min_eig
+	float min_lambda = fminf(fminf(lambda[0], lambda[1]), lambda[2]);
+	float shift = max(0.0f, min_eig - min_lambda);
+
+	A[0] += shift;
+	A[4] += shift;
+	A[8] += shift;
+
+	for (int i = 0; i < 9; i++)
+		H[i] = A[i];
+}
+
+__global__ void Make_Hessian_PD_Kernel(float *A_Val, const int *D_offset, int *non_pd_count, float min_eigenvalue, int number)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= number) return;
+
+	const int off = 9 * D_offset[i];
+
+	// Extract 3x3 diagonal block
+	float H[9];
+	for (int j = 0; j < 9; j++)
+		H[j] = A_Val[off + j];
+
+	// Symmetrize
+	float A[9];
+	for (int r = 0; r < 3; r++)
+		for (int c = 0; c < 3; c++)
+			A[r * 3 + c] = 0.5f * (H[r*3 + c] + H[c*3 + r]);
+
+	// Check if PD using Sylvester's criterion
+	float det1 = A[0];
+	float det2 = A[0] * A[4] - A[1] * A[3];
+	float det3 = A[0] * (A[4] * A[8] - A[5] * A[7])
+	           - A[1] * (A[3] * A[8] - A[5] * A[6])
+	           + A[2] * (A[3] * A[7] - A[4] * A[6]);
+
+	bool is_pd = (det1 > min_eigenvalue) && (det2 > min_eigenvalue*min_eigenvalue) && (det3 > min_eigenvalue*min_eigenvalue*min_eigenvalue);
+
+	if (!is_pd)
+	{
+		atomicAdd(non_pd_count, 1);
+		make_psd_3x3(H, min_eigenvalue);
+	}
+	else
+	{
+		// Just symmetrize
+		for (int j = 0; j < 9; j++)
+			H[j] = A[j];
+	}
+
+	// Write back
+	for (int j = 0; j < 9; j++)
+		A_Val[off + j] = H[j];
+}
+
+__global__ void Check_Hessian_SPD_Kernel(const float *A_Val, const int *D_offset, int *non_pd_count, int number)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= number) return;
+
+	const int off = 9 * D_offset[i];
+
+	// Extract 3x3 diagonal block
+	float H[9];
+	for (int j = 0; j < 9; j++)
+		H[j] = A_Val[off + j];
+
+	// Check symmetry
+	bool symmetric = true;
+	for (int r = 0; r < 3; r++)
+		for (int c = r + 1; c < 3; c++)
+			if (fabsf(H[r * 3 + c] - H[c * 3 + r]) > 1e-5)
+				symmetric = false;
+
+	// Check positive definiteness using Sylvester's criterion
+	// 1x1 leading principal minor
+	float det1 = H[0];
+	bool pd1 = (det1 > 0);
+
+	// 2x2 leading principal minor
+	float det2 = H[0] * H[4] - H[1] * H[3];
+	bool pd2 = (det2 > 0);
+
+	// 3x3 determinant
+	float det3 = H[0] * (H[4] * H[8] - H[5] * H[7])
+	           - H[1] * (H[3] * H[8] - H[5] * H[6])
+	           + H[2] * (H[3] * H[7] - H[4] * H[6]);
+	bool pd3 = (det3 > 0);
+
+	// If not PD, atomically increment counter
+	if (!symmetric || !pd1 || !pd2 || !pd3)
+		atomicAdd(non_pd_count, 1);
+}
+
 __global__ void Csr_Hessian_Kernel(float *csrVal, const float *bsrVal, const int *bsr2csr, const int *mapping, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -1761,7 +1927,9 @@ public:
 	int use_WHM;
 	int enable_PD;
 	int use_Hessian;
-	int use_true_newton;
+	int use_true_gradient;
+	int use_line_search;
+	int check_gradient_convergence;
 	int v_cycles;
 
 	TYPE*	TQ;
@@ -1945,6 +2113,9 @@ public:
 	int** dev_index2vertex;
 
 	int* dev_colors;
+
+	// SPD checking
+	int* dev_non_pd_count;
 
 	int*	dev_VTT;
 	int*	dev_vtt_num;
@@ -2434,6 +2605,7 @@ public:
 		err = cudaMalloc((void**)&dev_vtt_num,		sizeof(int )*(number+1));
 
 		err = cudaMalloc((void**)&dev_colors,		sizeof(int)*number);
+		err = cudaMalloc((void**)&dev_non_pd_count,	sizeof(int));
 
 		err = cudaMalloc((void**)&dev_error,		sizeof(TYPE)*3*number);
 
@@ -4896,6 +5068,40 @@ public:
 							dev_collision_fixed, dev_collision_normal, collision_mag, \
 							dev_index2vertex[layer], dev_MF_D_offset, number);
 
+					// Make Hessian diagonal blocks positive definite
+					cudaMemset(dev_non_pd_count, 0, sizeof(int));
+					Make_Hessian_PD_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > \
+						(dev_MF_Val, dev_MF_D_offset, dev_non_pd_count, 1e-6f, number);
+					if (enable_debug)
+					{
+						int projected_count = 0;
+						cudaMemcpy(&projected_count, dev_non_pd_count, sizeof(int), cudaMemcpyDeviceToHost);
+
+						if (projected_count > 0)
+						{
+							printf("[Debug] Iter %d: Projected %d / %d blocks to PSD (min_eig=1e-6)\n",
+								   it, projected_count, number);
+						}
+
+						// Verify projection succeeded
+						cudaMemset(dev_non_pd_count, 0, sizeof(int));
+						Check_Hessian_SPD_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > \
+							(dev_MF_Val, dev_MF_D_offset, dev_non_pd_count, number);
+
+						int still_non_pd = 0;
+						cudaMemcpy(&still_non_pd, dev_non_pd_count, sizeof(int), cudaMemcpyDeviceToHost);
+
+						if (still_non_pd > 0)
+						{
+							printf("[Warning] Iter %d: After projection, %d / %d blocks still NOT PD!\n",
+								   it, still_non_pd, number);
+						}
+						else if (projected_count > 0)
+						{
+							printf("[Debug] Iter %d: All blocks are now PD after projection\n", it);
+						}
+					}
+
 					if (enable_PD)
 					{
 						Csr_Hessian_Kernel << <(MF_PD_nnz + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > \
@@ -4979,10 +5185,11 @@ public:
 
 
 				// Compute elastic gradient
-				if (use_true_newton)
+				if (use_true_gradient)
 				{
-					TrueNewton_Elastic_Gradient_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock >> > \
-						(dev_Tet_Temp, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, lambda, mu, tet_number);
+					// TrueNewton_Elastic_Gradient_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock >> > \
+					// 	(dev_Tet_Temp, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, lambda, mu, tet_number);
+						Tet_Constraint_StVK_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock >> > (dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, lambda, mu, tet_number);
 				}
 				else
 				{
@@ -4996,7 +5203,7 @@ public:
 
 				Inertia_Gradient_Kernel << < (number + threadsPerBlock-1) / threadsPerBlock/*blocksPerGrid*/, threadsPerBlock >> > (dev_B[layer], dev_inertia_X, dev_X, dev_vertex2index[layer], dev_M, 1.0 / t, number);
 
-				if (use_true_newton)
+				if (check_gradient_convergence)
 				{
 					cublasScopy(cublasHandle, 3 * number, dev_B[layer], 1, dev_newton_gradient, 1);
 
@@ -5012,11 +5219,17 @@ public:
 						printf("[Debug] Iter %d: ||gradient||_inf = %.6e\n", it, grad_max);
 					}
 
-					const TYPE tol = 1e-6;
+					const TYPE tol = 1e-3;
 					if (grad_max < tol)
 					{
-						printf("Newton converged at iteration %d: ||grad||_inf = %.2e\n", it, grad_max);
+						if (enable_debug)
+							printf("Newton converged at iteration %d: ||grad||_inf = %.2e\n", it, grad_max);
 						break;
+					}
+					else
+					{
+						if (enable_debug)
+							printf("Continuing Newton: ||grad||_inf = %.2e\n", grad_max);
 					}
 				}
 
@@ -5081,7 +5294,6 @@ public:
 					}
 				}
 
-				if (timer.Get_Time() > 10) break;
 
 				cudaErr = cudaMemset(dev_deltaX[layer], 0, sizeof(float) * dims[layer]);
 
@@ -5383,7 +5595,7 @@ public:
 				//delete[] temp_out;
 				//delete[] out;
 
-				if (use_true_newton)
+				if (use_line_search)
 				{
 					// Line search to find optimal step size and update position
 					lineSearch(t);
@@ -5392,7 +5604,7 @@ public:
 				{
 					Update_DeltaX_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
 				}
-				if (use_WHM && !use_true_newton)
+				if (use_WHM && !use_line_search)
 				{
 					if (it <= 10) omega = 1;
 					else if (it == 11) omega = 2 / (2 - rho * rho);

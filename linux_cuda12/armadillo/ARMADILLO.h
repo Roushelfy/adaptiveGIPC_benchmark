@@ -55,7 +55,9 @@ public:
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::use_Hessian;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::use_WHM;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::enable_PD;
-	using CUDA_PROJECTIVE_TET_MESH<TYPE>::use_true_newton;
+	using CUDA_PROJECTIVE_TET_MESH<TYPE>::use_true_gradient;
+	using CUDA_PROJECTIVE_TET_MESH<TYPE>::use_line_search;
+	using CUDA_PROJECTIVE_TET_MESH<TYPE>::check_gradient_convergence;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::relaxation;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::layer;
 	using CUDA_PROJECTIVE_TET_MESH<TYPE>::handles_num;
@@ -167,7 +169,7 @@ public:
 		collision_mag = 1.0;
 		damping = 1;
 
-		fscanf(f, "%d %d %d %d %d", &pd_iters, &use_Hessian, &use_WHM, &enable_PD, &use_true_newton);
+		fscanf(f, "%d %d %d %d %d %d %d", &pd_iters, &use_Hessian, &use_WHM, &enable_PD, &use_true_gradient, &use_line_search, &check_gradient_convergence);
 		fscanf(f, "%f", relaxation);
 
 //		Read_Original_File("armadillo_10k.1");
