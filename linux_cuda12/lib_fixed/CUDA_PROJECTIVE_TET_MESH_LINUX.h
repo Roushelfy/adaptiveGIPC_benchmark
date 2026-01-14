@@ -5302,6 +5302,10 @@ public:
 				iter_timer.Start();
 
 #ifdef SETTINGF
+				const TYPE v_cycle_tol = 1e-3;
+				TYPE initial_residual = 0.0;
+				cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &initial_residual);
+				printf("* v_cycle initial residual: %e\n", initial_residual);
 				for (int v = 0; v < v_cycles; v++)
 				{
 				for (iterationSetting s : settings)
@@ -5333,6 +5337,13 @@ public:
 						break;
 					}
 				}
+
+				TYPE residual = 0.0;
+				cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &residual);
+				printf("* v_cycle iteration %d residual: %e\n", v,residual);
+				
+				if (residual< initial_residual * v_cycle_tol)
+					break;
 				}
 
 				cudaDeviceSynchronize();
