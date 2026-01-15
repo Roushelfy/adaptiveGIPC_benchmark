@@ -39,7 +39,7 @@
 #include "../lib/BMP_IO.h"
 
 // Forward declare time_step and sub_step before including ARMADILLO.h
-extern float time_step;
+extern double time_step;
 extern int sub_step;
 
 #include "ARMADILLO.h"
@@ -51,22 +51,22 @@ extern int sub_step;
 
 int		screen_width	= 1024;
 int		screen_height	= 768;
-float	zoom			= 30;
-float	swing_angle		= 135;
-float	elevate_angle	= 10;
-float	center[3]		={0, 0, 0};
+double	zoom			= 30;
+double	swing_angle		= 135;
+double	elevate_angle	= 10;
+double	center[3]		={0, 0, 0};
 bool	idle_run=false;
 bool	idle_render=false;
 bool	idle_scrnshot = false;
 bool	idle_export_obj = false;
 int		file_id=0;
-float	time_step=1.0/30.0;
+double	time_step=1.0/30.0;
 int		sub_step = 1;
 
 
-ARMADILLO<float>		armadillo;
+ARMADILLO<double>		armadillo;
 int		select_v=-1;
-float	target[3]={0, 0, 0};
+double	target[3]={0, 0, 0};
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -170,20 +170,20 @@ void Create_Shadow_Map(char* filename=0)
 	//Also we need to set up the projection matrix for shadow texture	
 	// This is matrix transform every coordinate x,y,z
 	// Moving from unit cube [-1,1] to [0,1]  
-	float bias[16] = {	0.5, 0.0, 0.0, 0.0, 
-						0.0, 0.5, 0.0, 0.0,
-						0.0, 0.0, 0.5, 0.0,
-						0.5, 0.5, 0.5, 1.0};
-	
+	float bias[16] = {	0.5f, 0.0f, 0.0f, 0.0f,
+						0.0f, 0.5f, 0.0f, 0.0f,
+						0.0f, 0.0f, 0.5f, 0.0f,
+						0.5f, 0.5f, 0.5f, 1.0f};
+
 	// Grab modelview and transformation matrices
 	float	modelView[16];
 	float	projection[16];
 	float	biased_MVP[16];
 	glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
-	glGetFloatv(GL_PROJECTION_MATRIX, projection);	
-		
-	glMatrixMode(GL_MODELVIEW);	
-	glLoadIdentity();	
+	glGetFloatv(GL_PROJECTION_MATRIX, projection);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 	glLoadMatrixf(bias);
 	// concatating all matrice into one.
 	glMultMatrixf(projection);
@@ -302,20 +302,20 @@ public:
 
 		GLuint c0=glGetAttribLocation(phong_program, "position");
 		GLuint c1=glGetAttribLocation(phong_program, "normal");
-		glEnableVertexAttribArray(c0); 
-		glEnableVertexAttribArray(c1); 
-		glBindBuffer(GL_ARRAY_BUFFER, vertex_handle); 
-		glBufferData(GL_ARRAY_BUFFER, sizeof(float)*armadillo.number*3, armadillo.X, GL_DYNAMIC_DRAW);
-		glVertexAttribPointer(c0,3,GL_FLOAT, GL_FALSE, sizeof(float)*3,(char*) NULL+0);		
+		glEnableVertexAttribArray(c0);
+		glEnableVertexAttribArray(c1);
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_handle);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(double)*armadillo.number*3, armadillo.X, GL_DYNAMIC_DRAW);
+		glVertexAttribPointer(c0,3,GL_DOUBLE, GL_FALSE, sizeof(double)*3,(char*) NULL+0);
 		glBindBuffer(GL_ARRAY_BUFFER, normal_handle);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(float)*armadillo.number*3, armadillo.VN, GL_DYNAMIC_DRAW);
-		glVertexAttribPointer(c1,3,GL_FLOAT, GL_FALSE, sizeof(float)*3,(char*) NULL+0); 
-		
+		glBufferData(GL_ARRAY_BUFFER, sizeof(double)*armadillo.number*3, armadillo.VN, GL_DYNAMIC_DRAW);
+		glVertexAttribPointer(c1,3,GL_DOUBLE, GL_FALSE, sizeof(double)*3,(char*) NULL+0);
+
 		GLuint c2 = glGetAttribLocation(phong_program, "colorOur");
 		glEnableVertexAttribArray(c2);
 		glBindBuffer(GL_ARRAY_BUFFER, color_handle);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(float)*armadillo.number * 3, armadillo.vertex_colors[armadillo.color_level], GL_DYNAMIC_DRAW);
-		glVertexAttribPointer(c2, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (char*)NULL + 0);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(double)*armadillo.number * 3, armadillo.vertex_colors[armadillo.color_level], GL_DYNAMIC_DRAW);
+		glVertexAttribPointer(c2, 3, GL_DOUBLE, GL_FALSE, sizeof(double) * 3, (char*)NULL + 0);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangle_handle);
 		glDrawElements(GL_TRIANGLES, armadillo.t_number*3, GL_UNSIGNED_INT, (char*) NULL+0);
@@ -324,7 +324,7 @@ public:
 		{
 			/*for(int i=0; i<armadillo.number; i++)
 			{
-				float dist2=0;
+				double dist2=0;
 				dist2+=(armadillo.X[i*3+0]-armadillo.X[select_v*3+0])*(armadillo.X[i*3+0]-armadillo.X[select_v*3+0]);
 				dist2+=(armadillo.X[i*3+1]-armadillo.X[select_v*3+1])*(armadillo.X[i*3+1]-armadillo.X[select_v*3+1]);
 				dist2+=(armadillo.X[i*3+2]-armadillo.X[select_v*3+2])*(armadillo.X[i*3+2]-armadillo.X[select_v*3+2]);
@@ -580,8 +580,8 @@ public:
 			{
 				if(armadillo.Read_File("armadillo_float.state"))
 					printf("Read armadillo.state successfully.\n");
-				cudaMemcpy(armadillo.dev_X,	armadillo.X, sizeof(float)*3*armadillo.number, cudaMemcpyHostToDevice);
-				cudaMemcpy(armadillo.dev_V,	armadillo.V, sizeof(float)*3*armadillo.number, cudaMemcpyHostToDevice);
+				cudaMemcpy(armadillo.dev_X,	armadillo.X, sizeof(double)*3*armadillo.number, cudaMemcpyHostToDevice);
+				cudaMemcpy(armadillo.dev_V,	armadillo.V, sizeof(double)*3*armadillo.number, cudaMemcpyHostToDevice);
 				break;
 			}
 			case 'w':
@@ -596,10 +596,10 @@ public:
 				//char filename[1024];
 				//snprintf(filename, sizeof(filename), "Jacobi400_pbd_results/armadillo_%04d.state", file_id);
 				//armadillo.Read_File(filename);
-				//cudaMemcpy(armadillo.dev_X,	armadillo.X, sizeof(float)*3*armadillo.number, cudaMemcpyHostToDevice);
+				//cudaMemcpy(armadillo.dev_X,	armadillo.X, sizeof(double)*3*armadillo.number, cudaMemcpyHostToDevice);
 				//printf("fid: %d\n", file_id);
 				armadillo.Translation(-0.3, 0.0, 0.0);
-				cudaMemcpy(armadillo.dev_X, armadillo.X, sizeof(float) * 3 * armadillo.number, cudaMemcpyHostToDevice);
+				cudaMemcpy(armadillo.dev_X, armadillo.X, sizeof(double) * 3 * armadillo.number, cudaMemcpyHostToDevice);
 				break;
 			}
 			case ',':case '<':
@@ -608,10 +608,10 @@ public:
 				//char filename[1024];
 				//snprintf(filename, sizeof(filename), "Jacobi400_pbd_results/armadillo_%04d.state", file_id);
 				//armadillo.Read_File(filename);
-				//cudaMemcpy(armadillo.dev_X,	armadillo.X, sizeof(float)*3*armadillo.number, cudaMemcpyHostToDevice);
+				//cudaMemcpy(armadillo.dev_X,	armadillo.X, sizeof(double)*3*armadillo.number, cudaMemcpyHostToDevice);
 				//printf("fid: %d\n", file_id);
 				armadillo.Translation(0.3, 0.0, 0.0);
-				cudaMemcpy(armadillo.dev_X, armadillo.X, sizeof(float) * 3 * armadillo.number, cudaMemcpyHostToDevice);
+				cudaMemcpy(armadillo.dev_X, armadillo.X, sizeof(double) * 3 * armadillo.number, cudaMemcpyHostToDevice);
 				break;
 			}
 			case 'p':
@@ -639,7 +639,7 @@ public:
 			{
 				if (armadillo.Read_File("clothing_target_float.state"))
 					printf("Read clothing_target successfully.\n");
-				cudaMemcpy(armadillo.dev_target_X, armadillo.X, sizeof(float) * 3 * armadillo.number, cudaMemcpyHostToDevice);
+				cudaMemcpy(armadillo.dev_target_X, armadillo.X, sizeof(double) * 3 * armadillo.number, cudaMemcpyHostToDevice);
 			}
 		}
 		glutPostRedisplay();
@@ -720,7 +720,7 @@ public:
 		}
 		if(select_v!=-1)
 		{
-			float	p[3], q[3];
+			double	p[3], q[3];
 			Get_Selection_Ray(x, y, p, q);
 			double dir[3];
 			dir[0]=q[0]-p[0];
@@ -745,7 +745,7 @@ public:
 		if (state == GLUT_UP)	motion_mode = NO_MOTION;
 		if (state == GLUT_DOWN)
 		{
-			float	p[3], q[3];
+			double	p[3], q[3];
 			Get_Selection_Ray(x, y, p, q);
 			armadillo.Select(p, q, select_v);
 

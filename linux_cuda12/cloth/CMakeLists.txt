@@ -15,7 +15,7 @@ target_link_libraries(cloth_sim
     ${CUDA_cublas_LIBRARY}
     ${CUDA_cusolver_LIBRARY}
     ${OPENGL_LIBRARIES}
-    ${GLUT_LIBRARY}
+    GLUT::GLUT
     ${GLEW_LIBRARIES}
     pthread
     dl

@@ -62,11 +62,11 @@
 //#define NO_UPDATE
 //#define VECTOR_UPDATE
 
-const float zero = 0.0;
-const float one = 1.0;
-const float minus_one = -1.0;
-const float inf = INFINITY;
-const float tol = 1e-5;
+const double zero = 0.0;
+const double one = 1.0;
+const double minus_one = -1.0;
+const double inf = INFINITY;
+const double tol = 1e-5;
 const int threadsPerBlock = 64;
 const int Reduction_threadsPerBlock = 8;
 const int UtAUs_threadPerBlock = 1;
@@ -95,15 +95,15 @@ __device__ __host__ struct object
 {
 	objectType type;
 	//Plane
-	float p_nx;
-	float p_ny;
-	float p_nz;
-	float p_c;
+	double p_nx;
+	double p_ny;
+	double p_nz;
+	double p_c;
 	//Sphere & Cylinder
-	float s_cx;
-	float s_cy;
-	float s_cz;
-	float s_r;
+	double s_cx;
+	double s_cy;
+	double s_cz;
+	double s_r;
 };
 typedef std::pair<iterationType, int> iterationSetting;
 
@@ -111,7 +111,7 @@ typedef std::pair<iterationType, int> iterationSetting;
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  math kernels
 ///////////////////////////////////////////////////////////////////////////////////////////
-__device__ void dev_Matrix_Product_3(const float *A, const float *B, float *R)				//R=A*B
+__device__ void dev_Matrix_Product_3(const double *A, const double *B, double *R)				//R=A*B
 {
 	R[0]=A[0]*B[0]+A[1]*B[3]+A[2]*B[6];
 	R[1]=A[0]*B[1]+A[1]*B[4]+A[2]*B[7];
@@ -124,86 +124,86 @@ __device__ void dev_Matrix_Product_3(const float *A, const float *B, float *R)		
 	R[8]=A[6]*B[2]+A[7]*B[5]+A[8]*B[8];
 }
 
-__device__ void dev_Matrix_Substract_3(float *A, float *B, float *R)						//R=A-B
+__device__ void dev_Matrix_Substract_3(double *A, double *B, double *R)						//R=A-B
 {
 	for(int i=0; i<9; i++)	R[i]=A[i]-B[i];
 }
 
-__device__ void dev_Matrix_Add_3(float *A, float *B, float *R)
+__device__ void dev_Matrix_Add_3(double *A, double *B, double *R)
 {
 	for (int i = 0; i < 9; i++)	R[i] = A[i] + B[i];
 }
 
-__device__ void dev_Matrix_Product(float *A, float *B, float *R, int nx, int ny, int nz)	//R=A*B
+__device__ void dev_Matrix_Product(double *A, double *B, double *R, int nx, int ny, int nz)	//R=A*B
 {
-	memset(R, 0, sizeof(float)*nx*nz);
+	memset(R, 0, sizeof(double)*nx*nz);
 	for(int i=0; i<nx; i++)
 	for(int j=0; j<nz; j++)
 	for(int k=0; k<ny; k++)
 		R[i*nz+j]+=A[i*ny+k]*B[k*nz+j];
 }
 
-__device__ void Get_Rotation(float F[3][3], float R[3][3])
+__device__ void Get_Rotation(double F[3][3], double R[3][3])
 {
-    float C[3][3];
-    memset(&C[0][0], 0, sizeof(float)*9);
+    double C[3][3];
+    memset(&C[0][0], 0, sizeof(double)*9);
     for(int i=0; i<3; i++)
     for(int j=0; j<3; j++)
     for(int k=0; k<3; k++)
         C[i][j]+=F[k][i]*F[k][j];
     
-    float C2[3][3];
-    memset(&C2[0][0], 0, sizeof(float)*9);
+    double C2[3][3];
+    memset(&C2[0][0], 0, sizeof(double)*9);
     for(int i=0; i<3; i++)
     for(int j=0; j<3; j++)
     for(int k=0; k<3; k++)
         C2[i][j]+=C[i][k]*C[j][k];
     
-    float det    =   F[0][0]*F[1][1]*F[2][2]+
+    double det    =   F[0][0]*F[1][1]*F[2][2]+
                     F[0][1]*F[1][2]*F[2][0]+
                     F[1][0]*F[2][1]*F[0][2]-
                     F[0][2]*F[1][1]*F[2][0]-
                     F[0][1]*F[1][0]*F[2][2]-
                     F[0][0]*F[1][2]*F[2][1];
     
-    float I_c    =   C[0][0]+C[1][1]+C[2][2];
-    float I_c2   =   I_c*I_c;
-    float II_c   =   0.5*(I_c2-C2[0][0]-C2[1][1]-C2[2][2]);
-    float III_c  =   det*det;
-    float k      =   I_c2-3*II_c;
+    double I_c    =   C[0][0]+C[1][1]+C[2][2];
+    double I_c2   =   I_c*I_c;
+    double II_c   =   0.5*(I_c2-C2[0][0]-C2[1][1]-C2[2][2]);
+    double III_c  =   det*det;
+    double k      =   I_c2-3*II_c;
     
-    float inv_U[3][3];
+    double inv_U[3][3];
     if(k<1e-7f)
     {
-        float inv_lambda=1.0/sqrt(I_c/3);
-        memset(inv_U, 0, sizeof(float)*9);
+        double inv_lambda=1.0/sqrt(I_c/3);
+        memset(inv_U, 0, sizeof(double)*9);
         inv_U[0][0]=inv_lambda;
         inv_U[1][1]=inv_lambda;
         inv_U[2][2]=inv_lambda;
     }
     else
     {
-        float l = I_c*(I_c*I_c-4.5*II_c)+13.5*III_c;
-        float k_root = sqrt(k);
-        float value=l/(k*k_root);
+        double l = I_c*(I_c*I_c-4.5*II_c)+13.5*III_c;
+        double k_root = sqrt(k);
+        double value=l/(k*k_root);
         if(value<-1.0) value=-1.0;
         if(value> 1.0) value= 1.0;
-        float phi = acos(value);
-        float lambda2=(I_c+2*k_root*cos(phi/3))/3.0;
-        float lambda=sqrt(lambda2);
+        double phi = acos(value);
+        double lambda2=(I_c+2*k_root*cos(phi/3))/3.0;
+        double lambda=sqrt(lambda2);
         
-        float III_u = sqrt(III_c);
+        double III_u = sqrt(III_c);
         if(det<0)   III_u=-III_u;
-        float I_u = lambda + sqrt(-lambda2 + I_c + 2*III_u/lambda);
-        float II_u=(I_u*I_u-I_c)*0.5;
+        double I_u = lambda + sqrt(-lambda2 + I_c + 2*III_u/lambda);
+        double II_u=(I_u*I_u-I_c)*0.5;
         
-        float U[3][3];
-        float inv_rate, factor;
+        double U[3][3];
+        double inv_rate, factor;
         
         inv_rate=1/(I_u*II_u-III_u);
         factor=I_u*III_u*inv_rate;
         
-        memset(U, 0, sizeof(float)*9);
+        memset(U, 0, sizeof(double)*9);
         U[0][0]=factor;
         U[1][1]=factor;
         U[2][2]=factor;
@@ -215,7 +215,7 @@ __device__ void Get_Rotation(float F[3][3], float R[3][3])
         
         inv_rate=1/III_u;
         factor=II_u*inv_rate;
-        memset(inv_U, 0, sizeof(float)*9);
+        memset(inv_U, 0, sizeof(double)*9);
         inv_U[0][0]=factor;
         inv_U[1][1]=factor;
         inv_U[2][2]=factor;
@@ -226,21 +226,21 @@ __device__ void Get_Rotation(float F[3][3], float R[3][3])
             inv_U[i][j]+=factor*U[i][j]+inv_rate*C[i][j];
     }
     
-    memset(&R[0][0], 0, sizeof(float)*9);
+    memset(&R[0][0], 0, sizeof(double)*9);
     for(int i=0; i<3; i++)
     for(int j=0; j<3; j++)
     for(int k=0; k<3; k++)
         R[i][j]+=F[i][k]*inv_U[k][j];    
 }
 
-__device__ void solve3x3(const float *A, const float *A_addition, const float *b, float *x)
+__device__ void solve3x3(const double *A, const double *A_addition, const double *b, double *x)
 {
-	float r[3];
-	float p[3];
-	float Ap[3];
-	float alpha, beta;
-	float old_r_norm, r_norm;
-	float dot;
+	double r[3];
+	double p[3];
+	double Ap[3];
+	double alpha, beta;
+	double old_r_norm, r_norm;
+	double dot;
 
 	for (int i = 0; i < 3; i++)
 		r[i] = b[i];
@@ -296,14 +296,14 @@ __device__ void solve3x3(const float *A, const float *A_addition, const float *b
 
 }
 
-__device__ void solve4x4(const float *A,const float *dA, const float *b,float *x)
+__device__ void solve4x4(const double *A,const double *dA, const double *b,double *x)
 {
-	float r[4];
-	float p[4];
-	float Ap[4];
-	float alpha, beta;
-	float old_r_norm, r_norm;
-	float dot;
+	double r[4];
+	double p[4];
+	double Ap[4];
+	double alpha, beta;
+	double old_r_norm, r_norm;
+	double dot;
 
 	for (int i = 0; i < 4; i++)
 		r[i] = b[i];
@@ -347,17 +347,17 @@ __device__ void solve4x4(const float *A,const float *dA, const float *b,float *x
 
 }
 
-__global__ void Mogai_Kernel(float *X, const float *UtAU_Diag_Val, const float *UtAU_Diag_addition, const float *b, const int base)
+__global__ void Mogai_Kernel(double *X, const double *UtAU_Diag_Val, const double *UtAU_Diag_addition, const double *b, const int base)
 {
 	int i = blockIdx.x;
 	int o = threadIdx.x;
 	int t = base + i;
-	const float *A = UtAU_Diag_Val + 144 * t;
-	const float *A_addition = UtAU_Diag_addition + 144 * t;
-	float *x = X + 12 * t;
-	__shared__ float r[12], p[12], Ap[12];
-	__shared__ volatile float temp[18];
-	__shared__ float dot, alpha, beta, r_norm, old_r_norm;
+	const double *A = UtAU_Diag_Val + 144 * t;
+	const double *A_addition = UtAU_Diag_addition + 144 * t;
+	double *x = X + 12 * t;
+	__shared__ double r[12], p[12], Ap[12];
+	__shared__ volatile double temp[18];
+	__shared__ double dot, alpha, beta, r_norm, old_r_norm;
 	__shared__ bool flag;
 	r[o] = b[12 * t + o];
 	p[o] = r[o];
@@ -418,17 +418,17 @@ __global__ void Mogai_Kernel(float *X, const float *UtAU_Diag_Val, const float *
 	}
 }
 
-__global__ void Mogai_Kernel_General(float *X, const float *UtAU_Diag_Val, const float *UtAU_Diag_addition, const int *D_offset, const float *b, const int base)
+__global__ void Mogai_Kernel_General(double *X, const double *UtAU_Diag_Val, const double *UtAU_Diag_addition, const int *D_offset, const double *b, const int base)
 {
 	int i = blockIdx.x;
 	int o = threadIdx.x;
 	int t = base + i;
-	const float *A = UtAU_Diag_Val + 144 * D_offset[t];
-	const float *A_addition = UtAU_Diag_addition + 144 * t;
-	float *x = X + 12 * t;
-	__shared__ float r[12], p[12], Ap[12];
-	__shared__ volatile float temp[18];
-	__shared__ float dot, alpha, beta, r_norm, old_r_norm;
+	const double *A = UtAU_Diag_Val + 144 * D_offset[t];
+	const double *A_addition = UtAU_Diag_addition + 144 * t;
+	double *x = X + 12 * t;
+	__shared__ double r[12], p[12], Ap[12];
+	__shared__ volatile double temp[18];
+	__shared__ double dot, alpha, beta, r_norm, old_r_norm;
 	__shared__ bool flag;
 	r[o] = b[12 * t + o];
 	p[o] = r[o];
@@ -489,13 +489,13 @@ __global__ void Mogai_Kernel_General(float *X, const float *UtAU_Diag_Val, const
 	}
 }
 
-__device__ void collision_detection(const float *X, float *fixed_X, float *normal, int *fixed, object *objs, int objs_num)
+__device__ void collision_detection(const double *X, double *fixed_X, double *normal, int *fixed, object *objs, int objs_num)
 {
 	*fixed = 0;
 	for (int i = 0; i < objs_num; i++)
 	{
 		object *o = objs + i;
-		float d, m;
+		double d, m;
 		switch (o->type)
 		{
 		case Plane:
@@ -547,7 +547,7 @@ __device__ void collision_detection(const float *X, float *fixed_X, float *norma
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Control kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Control_Kernel(float* X, int *more_fixed, const int number, const int select_v)
+__global__ void Control_Kernel(double* X, int *more_fixed, const int number, const int select_v)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;
@@ -555,7 +555,7 @@ __global__ void Control_Kernel(float* X, int *more_fixed, const int number, cons
 	more_fixed[i]=0;
 	if(select_v!=-1)
 	{
-		float dist2=0;
+		double dist2=0;
 		dist2+=(X[i*3+0]-X[select_v*3+0])*(X[i*3+0]-X[select_v*3+0]);
 		dist2+=(X[i*3+1]-X[select_v*3+1])*(X[i*3+1]-X[select_v*3+1]);
 		dist2+=(X[i*3+2]-X[select_v*3+2])*(X[i*3+2]-X[select_v*3+2]);
@@ -574,7 +574,7 @@ __global__ void Control_Kernel(float* X, int *more_fixed, const int number, cons
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Basic update kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Fixed_Update_Kernel(float* X, int *collision_fixed, float *collision_normal, const int *fixed, const int *more_fixed, float *fixed_X, const int number, const float dir_x, const float dir_y, const float dir_z,object *objects, int objects_num)
+__global__ void Fixed_Update_Kernel(double* X, int *collision_fixed, double *collision_normal, const int *fixed, const int *more_fixed, double *fixed_X, const int number, const double dir_x, const double dir_y, const double dir_z,object *objects, int objects_num)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -585,7 +585,7 @@ __global__ void Fixed_Update_Kernel(float* X, int *collision_fixed, float *colli
 	for (int t = 0; t < objects_num; t++)
 	{
 		object *o = objects + t;
-		float d, m;
+		double d, m;
 		switch (o->type)
 		{
 		case Plane:
@@ -642,7 +642,7 @@ __global__ void Fixed_Update_Kernel(float* X, int *collision_fixed, float *colli
 	}
 }
 
-__global__ void Basic_Update_Kernel(float* X, float* V, const float damping, const float t, const int number)
+__global__ void Basic_Update_Kernel(double* X, double* V, const double damping, const double t, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -664,7 +664,7 @@ __global__ void Basic_Update_Kernel(float* X, float* V, const float damping, con
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Tet Constraint Kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Tet_Constraint_Kernel(const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* Tet_Temp, const float elasticity, const int tet_number)
+__global__ void Tet_Constraint_Kernel(const double* X, const int* Tet, const double* inv_Dm, const double* Vol, double* Tet_Temp, const double elasticity, const int tet_number)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
 	if(t>=tet_number)	return;
@@ -674,9 +674,9 @@ __global__ void Tet_Constraint_Kernel(const float* X, const int* Tet, const floa
 	int p2=Tet[t*4+2]*3;
 	int p3=Tet[t*4+3]*3;
 
-	const float* idm=&inv_Dm[t*9];
+	const double* idm=&inv_Dm[t*9];
 
-	float Ds[9];
+	double Ds[9];
 	Ds[0]=X[p1+0]-X[p0+0];
 	Ds[3]=X[p1+1]-X[p0+1];
 	Ds[6]=X[p1+2]-X[p0+2];
@@ -687,11 +687,11 @@ __global__ void Tet_Constraint_Kernel(const float* X, const int* Tet, const floa
 	Ds[5]=X[p3+1]-X[p0+1];
 	Ds[8]=X[p3+2]-X[p0+2];
 
-	float F[9], R[9], B[3], C[9];
-	float new_R[9];
+	double F[9], R[9], B[3], C[9];
+	double new_R[9];
 	dev_Matrix_Product_3(Ds, idm, F);
 	
-	Get_Rotation((float (*)[3])F, (float (*)[3])new_R);
+	Get_Rotation((double (*)[3])F, (double (*)[3])new_R);
 
 //	bool flag = false;
 //#pragma unroll
@@ -714,7 +714,7 @@ __global__ void Tet_Constraint_Kernel(const float* X, const int* Tet, const floa
 //		return;
 //	}
 	
-	float half_matrix[3][4], result_matrix[3][4];
+	double half_matrix[3][4], result_matrix[3][4];
 	half_matrix[0][0]=-idm[0]-idm[3]-idm[6];
 	half_matrix[0][1]= idm[0];
 	half_matrix[0][2]= idm[3];
@@ -731,7 +731,7 @@ __global__ void Tet_Constraint_Kernel(const float* X, const int* Tet, const floa
 	dev_Matrix_Substract_3(new_R, F, new_R);
 	dev_Matrix_Product(new_R, &half_matrix[0][0], &result_matrix[0][0], 3, 3, 4);
 			
-	float rate=Vol[t]*elasticity;
+	double rate=Vol[t]*elasticity;
 	Tet_Temp[t*12+ 0]=result_matrix[0][0]*rate;
 	Tet_Temp[t*12+ 1]=result_matrix[1][0]*rate;
 	Tet_Temp[t*12+ 2]=result_matrix[2][0]*rate;
@@ -746,7 +746,7 @@ __global__ void Tet_Constraint_Kernel(const float* X, const int* Tet, const floa
 	Tet_Temp[t*12+11]=result_matrix[2][3]*rate;
 }
 
-__global__ void Tet_Constraint_StVK_Kernel(const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* Tet_Temp, const float lambda, const float mu, const int tet_number)
+__global__ void Tet_Constraint_StVK_Kernel(const double* X, const int* Tet, const double* inv_Dm, const double* Vol, double* Tet_Temp, const double lambda, const double mu, const int tet_number)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
 	if (t >= tet_number)	return;
@@ -756,9 +756,9 @@ __global__ void Tet_Constraint_StVK_Kernel(const float* X, const int* Tet, const
 	int p2 = Tet[t * 4 + 2] * 3;
 	int p3 = Tet[t * 4 + 3] * 3;
 
-	const float* idm = &inv_Dm[t * 9];
+	const double* idm = &inv_Dm[t * 9];
 
-	float Ds[9];
+	double Ds[9];
 	Ds[0] = X[p1 + 0] - X[p0 + 0];
 	Ds[3] = X[p1 + 1] - X[p0 + 1];
 	Ds[6] = X[p1 + 2] - X[p0 + 2];
@@ -769,7 +769,7 @@ __global__ void Tet_Constraint_StVK_Kernel(const float* X, const int* Tet, const
 	Ds[5] = X[p3 + 1] - X[p0 + 1];
 	Ds[8] = X[p3 + 2] - X[p0 + 2];
 
-	float F[9], E[9], Ft[9], Ptemp[9], P[9];
+	double F[9], E[9], Ft[9], Ptemp[9], P[9];
 	dev_Matrix_Product_3(Ds, idm, F);
 
 	for (int i = 0; i < 3; i++)
@@ -786,7 +786,7 @@ __global__ void Tet_Constraint_StVK_Kernel(const float* X, const int* Tet, const
 	for (int i = 0; i < 9; i++)
 		Ptemp[i] = E[i] * 2.0*mu;
 
-	float trace_E = E[0] + E[4] + E[8];
+	double trace_E = E[0] + E[4] + E[8];
 	Ptemp[0] += trace_E * lambda;
 	Ptemp[4] += trace_E * lambda;
 	Ptemp[8] += trace_E * lambda;
@@ -813,7 +813,7 @@ __global__ void Tet_Constraint_StVK_Kernel(const float* X, const int* Tet, const
 	//		return;
 	//	}
 
-	float half_matrix[3][4], result_matrix[3][4];
+	double half_matrix[3][4], result_matrix[3][4];
 	half_matrix[0][0] = -idm[0] - idm[3] - idm[6];
 	half_matrix[0][1] = idm[0];
 	half_matrix[0][2] = idm[3];
@@ -829,7 +829,7 @@ __global__ void Tet_Constraint_StVK_Kernel(const float* X, const int* Tet, const
 
 	dev_Matrix_Product(P, &half_matrix[0][0], &result_matrix[0][0], 3, 3, 4);
 
-	float rate = -Vol[t];
+	double rate = -Vol[t];
 	Tet_Temp[t * 12 + 0] = result_matrix[0][0] * rate;
 	Tet_Temp[t * 12 + 1] = result_matrix[1][0] * rate;
 	Tet_Temp[t * 12 + 2] = result_matrix[2][0] * rate;
@@ -849,13 +849,13 @@ __global__ void Tet_Constraint_StVK_Kernel(const float* X, const int* Tet, const
 // Computes negative gradient (force) per vertex: -∇Φ(x)
 ///////////////////////////////////////////////////////////////////////////////////////////
 __global__ void TrueNewton_Elastic_Gradient_Kernel(
-	float* Tet_Temp,
-	const float* X,
+	double* Tet_Temp,
+	const double* X,
 	const int* Tet,
-	const float* inv_Dm,
-	const float* Vol,
-	const float lambda,
-	const float mu,
+	const double* inv_Dm,
+	const double* Vol,
+	const double lambda,
+	const double mu,
 	int tet_number)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
@@ -866,10 +866,10 @@ __global__ void TrueNewton_Elastic_Gradient_Kernel(
 	int p2 = Tet[t * 4 + 2] * 3;
 	int p3 = Tet[t * 4 + 3] * 3;
 
-	const float* idm = &inv_Dm[t * 9];
+	const double* idm = &inv_Dm[t * 9];
 
 	// Compute Ds (current shape)
-	float Ds[9];
+	double Ds[9];
 	Ds[0] = X[p1 + 0] - X[p0 + 0];
 	Ds[3] = X[p1 + 1] - X[p0 + 1];
 	Ds[6] = X[p1 + 2] - X[p0 + 2];
@@ -881,23 +881,23 @@ __global__ void TrueNewton_Elastic_Gradient_Kernel(
 	Ds[8] = X[p3 + 2] - X[p0 + 2];
 
 	// F = Ds * Dm^{-1}
-	float F[9];
+	double F[9];
 	dev_Matrix_Product_3(Ds, idm, F);
 
 	// E = (F^T * F - I) / 2
-	float Ft[9];
+	double Ft[9];
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
 			Ft[i * 3 + j] = F[j * 3 + i];
 
-	float E[9];
+	double E[9];
 	dev_Matrix_Product_3(Ft, F, E);
 	E[0] -= 1.0f; E[4] -= 1.0f; E[8] -= 1.0f;
 	for (int i = 0; i < 9; i++) E[i] *= 0.5f;
 
 	// S = λ*tr(E)*I + 2μ*E (Second Piola-Kirchhoff)
-	float tr_E = E[0] + E[4] + E[8];
-	float S[9];
+	double tr_E = E[0] + E[4] + E[8];
+	double S[9];
 	for (int i = 0; i < 9; i++)
 		S[i] = 2.0f * mu * E[i];
 	S[0] += lambda * tr_E;
@@ -905,11 +905,11 @@ __global__ void TrueNewton_Elastic_Gradient_Kernel(
 	S[8] += lambda * tr_E;
 
 	// P = F * S (First Piola-Kirchhoff)
-	float P[9];
+	double P[9];
 	dev_Matrix_Product_3(F, S, P);
 
 	// Force = -Vol * P * Dm^{-T}
-	float PDmT[9];
+	double PDmT[9];
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++) {
 			PDmT[i * 3 + j] = 0.0f;
@@ -918,7 +918,7 @@ __global__ void TrueNewton_Elastic_Gradient_Kernel(
 		}
 
 	// Map to vertices
-	float half_matrix[3][4];
+	double half_matrix[3][4];
 	half_matrix[0][0] = -idm[0] - idm[3] - idm[6];
 	half_matrix[0][1] = idm[0];
 	half_matrix[0][2] = idm[3];
@@ -932,10 +932,10 @@ __global__ void TrueNewton_Elastic_Gradient_Kernel(
 	half_matrix[2][2] = idm[5];
 	half_matrix[2][3] = idm[8];
 
-	float result_matrix[3][4];
+	double result_matrix[3][4];
 	dev_Matrix_Product(PDmT, &half_matrix[0][0], &result_matrix[0][0], 3, 3, 4);
 
-	float rate = -Vol[t];
+	double rate = -Vol[t];
 	for (int v = 0; v < 4; v++) {
 		Tet_Temp[t * 12 + v * 3 + 0] = result_matrix[0][v] * rate;
 		Tet_Temp[t * 12 + v * 3 + 1] = result_matrix[1][v] * rate;
@@ -943,7 +943,7 @@ __global__ void TrueNewton_Elastic_Gradient_Kernel(
 	}
 }
 
-__global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, const float* inv_Dm, const float* Vol, const float lambda, const float mu, const int *update_offset, int tet_number)
+__global__ void Hessian_Kernel(double *A_Val, const double *X, const int* Tet, const double* inv_Dm, const double* Vol, const double lambda, const double mu, const int *update_offset, int tet_number)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
 	if (t >= tet_number)	return;
@@ -953,13 +953,13 @@ __global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, con
 	int p2 = Tet[t * 4 + 2] * 3;
 	int p3 = Tet[t * 4 + 3] * 3;
 
-	float idmT[9];
+	double idmT[9];
 
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
 			idmT[3 * i + j] = inv_Dm[9 * t + 3 * j + i];
 
-	float Ds[9];
+	double Ds[9];
 	Ds[0] = X[p1 + 0] - X[p0 + 0];
 	Ds[3] = X[p1 + 1] - X[p0 + 1];
 	Ds[6] = X[p1 + 2] - X[p0 + 2];
@@ -970,7 +970,7 @@ __global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, con
 	Ds[5] = X[p3 + 1] - X[p0 + 1];
 	Ds[8] = X[p3 + 2] - X[p0 + 2];
 
-	float F[9], E[9], Ft[9], dE[9], dF[9], temp[27];
+	double F[9], E[9], Ft[9], dE[9], dF[9], temp[27];
 	dev_Matrix_Product_3(Ds, inv_Dm + 9 * t, F);
 
 	for (int i = 0; i < 3; i++)
@@ -984,9 +984,9 @@ __global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, con
 	for (int i = 0; i < 9; i++)
 		E[i] *= 0.5;
 
-	float dpdf[81];
+	double dpdf[81];
 	//to do: calc dpdf
-	float c1 = lambda*(E[0] + E[4] + E[8]);
+	double c1 = lambda*(E[0] + E[4] + E[8]);
 	for (int c = 0; c < 9; c++)
 		temp[18 + c] = 2.0*mu*E[c];
 	temp[18 + 0] += c1;
@@ -1024,7 +1024,7 @@ __global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, con
 			dev_Matrix_Add_3(dpdf + 9 * (3 * i + j), temp + 9, dpdf + 9 * (3 * i + j));
 		}
 
-	float temp_val_1[81];
+	double temp_val_1[81];
 	for (int i = 0; i < 81; i++)
 		temp_val_1[i] = 0;
 
@@ -1034,7 +1034,7 @@ __global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, con
 				for (int c = 0; c < 9; c++)
 					temp_val_1[9 * (i * 3 + j) + c] += dpdf[9 * (i * 3 + k) + c] * idmT[3 * k + j];
 
-	float temp_val_2[81];
+	double temp_val_2[81];
 	for (int i = 0; i < 9; i++)
 		dev_Matrix_Product_3(temp_val_1 + 9 * i, idmT, temp_val_2 + 9 * i);
 
@@ -1043,7 +1043,7 @@ __global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, con
 			for (int u = 0; u < 3; u++)
 				for (int v = 0; v < 3; v++)
 				{
-					float value = Vol[t] * temp_val_2[9 * (3 * v + j) + 3 * u + i];
+					double value = Vol[t] * temp_val_2[9 * (3 * v + j) + 3 * u + i];
 					atomicAdd(A_Val + update_offset[16 * t + 4 * (i + 1) + j + 1] * 9 + 3 * u + v, value);
 					atomicAdd(A_Val + update_offset[16 * t + 4 * (i + 1)] * 9 + 3 * u + v, -value);
 					atomicAdd(A_Val + update_offset[16 * t + j + 1] * 9 + 3 * u + v, -value);
@@ -1051,9 +1051,9 @@ __global__ void Hessian_Kernel(float *A_Val, const float *X, const int* Tet, con
 				}
 }
 
-__global__ void Hessian_Diag_Kernel(float *A_Diag_Val, const float *M, const float inv_t, \
-	const int *fixed, const int *more_fixed, const float control_mag, \
-	const int *collision_fixed, const float *collision_normal, const float collision_mag, \
+__global__ void Hessian_Diag_Kernel(double *A_Diag_Val, const double *M, const double inv_t, \
+	const int *fixed, const int *more_fixed, const double control_mag, \
+	const int *collision_fixed, const double *collision_normal, const double collision_mag, \
 	const int *index2vertex, const int *D_offset, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -1061,7 +1061,7 @@ __global__ void Hessian_Diag_Kernel(float *A_Diag_Val, const float *M, const flo
 	int v = index2vertex[i];
 
 
-	float dA = M[v] * inv_t*inv_t;
+	double dA = M[v] * inv_t*inv_t;
 	const int off = 9 * D_offset[i];
 
 #ifdef COLLISION
@@ -1093,26 +1093,26 @@ __global__ void Hessian_Diag_Kernel(float *A_Diag_Val, const float *M, const flo
 }
 
 // Compute eigenvalues of 3x3 symmetric matrix using analytical formula
-__device__ void compute_eigenvalues_3x3_symmetric(const float* A, float* lambda)
+__device__ void compute_eigenvalues_3x3_symmetric(const double* A, double* lambda)
 {
 	// A must be symmetric: A[i*3+j] == A[j*3+i]
 	// Uses characteristic polynomial method
 
-	float a = A[0], b = A[1], c = A[2];
-	float d = A[4], e = A[5];
-	float f = A[8];
+	double a = A[0], b = A[1], c = A[2];
+	double d = A[4], e = A[5];
+	double f = A[8];
 
 	// Invariants
-	float I1 = a + d + f;  // trace
-	float I2 = a*d + a*f + d*f - b*b - c*c - e*e;
-	float I3 = a*d*f + 2*b*c*e - a*e*e - d*c*c - f*b*b;  // determinant
+	double I1 = a + d + f;  // trace
+	double I2 = a*d + a*f + d*f - b*b - c*c - e*e;
+	double I3 = a*d*f + 2*b*c*e - a*e*e - d*c*c - f*b*b;  // determinant
 
 	// Characteristic polynomial: λ³ - I1·λ² + I2·λ - I3 = 0
 	// Use Cardano's formula
-	float p = I2 - I1*I1/3.0f;
-	float q = 2.0f*I1*I1*I1/27.0f - I1*I2/3.0f + I3;
+	double p = I2 - I1*I1/3.0f;
+	double q = 2.0f*I1*I1*I1/27.0f - I1*I2/3.0f + I3;
 
-	float discriminant = q*q/4.0f + p*p*p/27.0f;
+	double discriminant = q*q/4.0f + p*p*p/27.0f;
 
 	if (discriminant > 0 || fabsf(p) < 1e-12f)
 	{
@@ -1124,9 +1124,9 @@ __device__ void compute_eigenvalues_3x3_symmetric(const float* A, float* lambda)
 	else
 	{
 		// Three real roots
-		float r = sqrtf(-p*p*p/27.0f);
-		float phi = acosf(-q / (2.0f*r));
-		float s = 2.0f * powf(r, 1.0f/3.0f);
+		double r = sqrtf(-p*p*p/27.0f);
+		double phi = acosf(-q / (2.0f*r));
+		double s = 2.0f * powf(r, 1.0f/3.0f);
 
 		lambda[0] = I1/3.0f + s * cosf(phi/3.0f);
 		lambda[1] = I1/3.0f + s * cosf((phi + 2.0f*3.14159265f)/3.0f);
@@ -1135,17 +1135,17 @@ __device__ void compute_eigenvalues_3x3_symmetric(const float* A, float* lambda)
 }
 
 // Project matrix to PSD by eigenvalue decomposition
-__device__ void make_psd_3x3(float* H, float min_eig)
+__device__ void make_psd_3x3(double* H, double min_eig)
 {
 	// Symmetrize first
-	float A[9];
+	double A[9];
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
 			A[i*3 + j] = 0.5f * (H[i*3 + j] + H[j*3 + i]);
 
 	// For 3x3 case, use simplified eigenvalue projection
 	// Compute eigenvalues
-	float lambda[3];
+	double lambda[3];
 	compute_eigenvalues_3x3_symmetric(A, lambda);
 
 	// Check if any eigenvalue is negative or too small
@@ -1164,8 +1164,8 @@ __device__ void make_psd_3x3(float* H, float min_eig)
 
 	// Simple diagonal regularization (more stable than full EVD on GPU)
 	// Add shift to make smallest eigenvalue = min_eig
-	float min_lambda = fminf(fminf(lambda[0], lambda[1]), lambda[2]);
-	float shift = max(0.0f, min_eig - min_lambda);
+	double min_lambda = fminf(fminf(lambda[0], lambda[1]), lambda[2]);
+	double shift = max(0.0f, min_eig - min_lambda);
 
 	A[0] += shift;
 	A[4] += shift;
@@ -1175,7 +1175,7 @@ __device__ void make_psd_3x3(float* H, float min_eig)
 		H[i] = A[i];
 }
 
-__global__ void Make_Hessian_PD_Kernel(float *A_Val, const int *D_offset, int *non_pd_count, float min_eigenvalue, int number)
+__global__ void Make_Hessian_PD_Kernel(double *A_Val, const int *D_offset, int *non_pd_count, double min_eigenvalue, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number) return;
@@ -1183,20 +1183,20 @@ __global__ void Make_Hessian_PD_Kernel(float *A_Val, const int *D_offset, int *n
 	const int off = 9 * D_offset[i];
 
 	// Extract 3x3 diagonal block
-	float H[9];
+	double H[9];
 	for (int j = 0; j < 9; j++)
 		H[j] = A_Val[off + j];
 
 	// Symmetrize
-	float A[9];
+	double A[9];
 	for (int r = 0; r < 3; r++)
 		for (int c = 0; c < 3; c++)
 			A[r * 3 + c] = 0.5f * (H[r*3 + c] + H[c*3 + r]);
 
 	// Check if PD using Sylvester's criterion
-	float det1 = A[0];
-	float det2 = A[0] * A[4] - A[1] * A[3];
-	float det3 = A[0] * (A[4] * A[8] - A[5] * A[7])
+	double det1 = A[0];
+	double det2 = A[0] * A[4] - A[1] * A[3];
+	double det3 = A[0] * (A[4] * A[8] - A[5] * A[7])
 	           - A[1] * (A[3] * A[8] - A[5] * A[6])
 	           + A[2] * (A[3] * A[7] - A[4] * A[6]);
 
@@ -1219,7 +1219,7 @@ __global__ void Make_Hessian_PD_Kernel(float *A_Val, const int *D_offset, int *n
 		A_Val[off + j] = H[j];
 }
 
-__global__ void Check_Hessian_SPD_Kernel(const float *A_Val, const int *D_offset, int *non_pd_count, int number)
+__global__ void Check_Hessian_SPD_Kernel(const double *A_Val, const int *D_offset, int *non_pd_count, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number) return;
@@ -1227,7 +1227,7 @@ __global__ void Check_Hessian_SPD_Kernel(const float *A_Val, const int *D_offset
 	const int off = 9 * D_offset[i];
 
 	// Extract 3x3 diagonal block
-	float H[9];
+	double H[9];
 	for (int j = 0; j < 9; j++)
 		H[j] = A_Val[off + j];
 
@@ -1240,15 +1240,15 @@ __global__ void Check_Hessian_SPD_Kernel(const float *A_Val, const int *D_offset
 
 	// Check positive definiteness using Sylvester's criterion
 	// 1x1 leading principal minor
-	float det1 = H[0];
+	double det1 = H[0];
 	bool pd1 = (det1 > 0);
 
 	// 2x2 leading principal minor
-	float det2 = H[0] * H[4] - H[1] * H[3];
+	double det2 = H[0] * H[4] - H[1] * H[3];
 	bool pd2 = (det2 > 0);
 
 	// 3x3 determinant
-	float det3 = H[0] * (H[4] * H[8] - H[5] * H[7])
+	double det3 = H[0] * (H[4] * H[8] - H[5] * H[7])
 	           - H[1] * (H[3] * H[8] - H[5] * H[6])
 	           + H[2] * (H[3] * H[7] - H[4] * H[6]);
 	bool pd3 = (det3 > 0);
@@ -1258,28 +1258,28 @@ __global__ void Check_Hessian_SPD_Kernel(const float *A_Val, const int *D_offset
 		atomicAdd(non_pd_count, 1);
 }
 
-__global__ void Csr_Hessian_Kernel(float *csrVal, const float *bsrVal, const int *bsr2csr, const int *mapping, int number)
+__global__ void Csr_Hessian_Kernel(double *csrVal, const double *bsrVal, const int *bsr2csr, const int *mapping, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
 	csrVal[i] = bsrVal[bsr2csr[mapping[i]]];
 }
 
-__global__ void Direct_Reorder_Kernel(float *Qb, const float *b, const int *reorder, int number)
+__global__ void Direct_Reorder_Kernel(double *Qb, const double *b, const int *reorder, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
 	Qb[i] = b[reorder[i]];
 }
 
-__global__ void Direct_Inverse_Reorder_Kernel(float *x, const float *Qtx, const int *reorder, int number)
+__global__ void Direct_Inverse_Reorder_Kernel(double *x, const double *Qtx, const int *reorder, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
 	x[reorder[i]] = Qtx[i];
 }
 
-__global__ void MF_Mapping_Kernel(float *temp_Val, const float *A_Val, const float *precomputed_4x4, const int *half_offset, int number)
+__global__ void MF_Mapping_Kernel(double *temp_Val, const double *A_Val, const double *precomputed_4x4, const int *half_offset, int number)
 {
 	int i = blockIdx.x*blockDim.x / 16 + threadIdx.x / 16;
 	if (i > number) return;
@@ -1293,7 +1293,7 @@ __global__ void MF_Mapping_Kernel(float *temp_Val, const float *A_Val, const flo
 	temp_Val[16 * i + 4 * tx + ty] = A_Val[i] * precomputed_4x4[16 * po + 4 * tx + ty];
 }
 
-__global__ void MF_2_UtAU_sparse_reduction_Kernel(float *UtAUs_Val, const float *temp_Val, const int *update_offset, const int *half_offset, int number)
+__global__ void MF_2_UtAU_sparse_reduction_Kernel(double *UtAUs_Val, const double *temp_Val, const int *update_offset, const int *half_offset, int number)
 {
 	int i = blockIdx.x*blockDim.x / 16 + threadIdx.x / 16;
 	if (i > number) return;
@@ -1306,7 +1306,7 @@ __global__ void MF_2_UtAU_sparse_reduction_Kernel(float *UtAUs_Val, const float 
 	atomicAdd(UtAUs_Val + 144 * update_offset[po] + (px * 4 + tx) * 12 + py * 4 + ty, temp_Val[16 * i + 4 * tx + ty]);
 }
 
-__global__ void MF_2_UtAU_dense_reduction_Kernel(float *UtAUs_Val, const float *temp_Val, const int *update_offset, const int *half_offset, const int ldim, int number)
+__global__ void MF_2_UtAU_dense_reduction_Kernel(double *UtAUs_Val, const double *temp_Val, const int *update_offset, const int *half_offset, const int ldim, int number)
 {
 	int i = blockIdx.x*blockDim.x / 16 + threadIdx.x / 16;
 	if (i > number) return;
@@ -1320,7 +1320,7 @@ __global__ void MF_2_UtAU_dense_reduction_Kernel(float *UtAUs_Val, const float *
 	atomicAdd(UtAUs_Val + (c * 12 + 4 * py + ty) * 12 * ldim + r * 12 + 4 * px + tx, temp_Val[16 * i + 4 * tx + ty]);
 }
 
-__global__ void UtAU_2_UtAU_sparse_Kernel(float *UtAUs_Val, const float *temp_Val, const int *update_offset, const int *half_offset, int number)
+__global__ void UtAU_2_UtAU_sparse_Kernel(double *UtAUs_Val, const double *temp_Val, const int *update_offset, const int *half_offset, int number)
 {
 	int i = blockIdx.x*blockDim.y + threadIdx.y;
 	if (i > number) return;
@@ -1328,7 +1328,7 @@ __global__ void UtAU_2_UtAU_sparse_Kernel(float *UtAUs_Val, const float *temp_Va
 	atomicAdd(UtAUs_Val + 144 * update_offset[i] + off, temp_Val[144 * i + off]);
 }
 
-__global__ void UtAU_2_UtAU_dense_Kernel(float *UtAUs_Val, const float *temp_Val, const int *update_offset, const int ldim, int number)
+__global__ void UtAU_2_UtAU_dense_Kernel(double *UtAUs_Val, const double *temp_Val, const int *update_offset, const int ldim, int number)
 {
 	int i = blockIdx.x*blockDim.y + threadIdx.y;
 	if (i > number) return;
@@ -1339,7 +1339,7 @@ __global__ void UtAU_2_UtAU_dense_Kernel(float *UtAUs_Val, const float *temp_Val
 }
 
 
-__global__ void UtAUs_sparse_Mirror_Kernel(float *UtAUs_Val, const int *L_offset, const int *mirror_offset, int number)
+__global__ void UtAUs_sparse_Mirror_Kernel(double *UtAUs_Val, const int *L_offset, const int *mirror_offset, int number)
 {
 	int i = (blockIdx.x*blockDim.x + threadIdx.x) / 144;
 	if (i > number) return;
@@ -1348,7 +1348,7 @@ __global__ void UtAUs_sparse_Mirror_Kernel(float *UtAUs_Val, const int *L_offset
 	UtAUs_Val[144 * mirror_offset[i] + off1] = UtAUs_Val[144 * L_offset[i] + off2];
 }
 
-__global__ void UtAUs_dense_Mirror_Kernel(float *UtAUs_Val, const int *L_offset, const int *mirror_offset, int ldim, int number)
+__global__ void UtAUs_dense_Mirror_Kernel(double *UtAUs_Val, const int *L_offset, const int *mirror_offset, int ldim, int number)
 {
 	int i = (blockIdx.x*blockDim.x + threadIdx.x) / 144;
 	if (i > number) return;
@@ -1358,7 +1358,7 @@ __global__ void UtAUs_dense_Mirror_Kernel(float *UtAUs_Val, const int *L_offset,
 	UtAUs_Val[(r * 12 + dx) * 12 * ldim + c * 12 + dy] = UtAUs_Val[(c * 12 + dy) * 12 * ldim + r * 12 + dx];
 }
 
-__global__ void UtAUs_Diag_Rank_Fix_Kernel(float *UtAUs_Val, const int *D_offset, const float *UtAUs_rank_fix, int number)
+__global__ void UtAUs_Diag_Rank_Fix_Kernel(double *UtAUs_Val, const int *D_offset, const double *UtAUs_rank_fix, int number)
 {
 	int i = blockIdx.x*blockDim.y + threadIdx.y;
 	if (i > number) return;
@@ -1369,13 +1369,13 @@ __global__ void UtAUs_Diag_Rank_Fix_Kernel(float *UtAUs_Val, const int *D_offset
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Constraint Kernel 0
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Diag_Update_Kernel(float* MF_Diag, const int* more_fixed,const int *collision_fixed, const int *vertex2index, const float control_mag,\
-	const float collision_mag, const float *collision_normal, const int number,const int layer)
+__global__ void Diag_Update_Kernel(double* MF_Diag, const int* more_fixed,const int *collision_fixed, const int *vertex2index, const double control_mag,\
+	const double collision_mag, const double *collision_normal, const int number,const int layer)
 {
 	int v = blockDim.x * blockIdx.x + threadIdx.x;
 	if (v >= number)	return;
 	int i = vertex2index[v];
-	float *Diag = MF_Diag + 9 * i;
+	double *Diag = MF_Diag + 9 * i;
 	if (more_fixed[v] || collision_fixed[v])
 	{
 		if (!collision_fixed[v])
@@ -1386,7 +1386,7 @@ __global__ void Diag_Update_Kernel(float* MF_Diag, const int* more_fixed,const i
 		}
 		else
 		{
-			const float *norm = collision_normal + 3 * v;
+			const double *norm = collision_normal + 3 * v;
 
 			for (int di = 0; di < 3; di++)
 				for (int dj = 0; dj < 3; dj++)
@@ -1408,7 +1408,7 @@ __global__ void Diag_Update_Kernel(float* MF_Diag, const int* more_fixed,const i
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Constraint Kernel 1
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Constraint_1_Kernel(const float* X, const float* init_B, const float* VC, float* next_X, const float* Tet_Temp, const float* MD, const int* VTT, const int* vtt_num, const int number)
+__global__ void Constraint_1_Kernel(const double* X, const double* init_B, const double* VC, double* next_X, const double* Tet_Temp, const double* MD, const int* VTT, const int* vtt_num, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;
@@ -1430,9 +1430,9 @@ __global__ void Constraint_1_Kernel(const float* X, const float* init_B, const f
 	next_X[i*3+2]=b[2]/(VC[i]+MD[i]);
 }
 
-__global__ void Energy_Gradient_Kernel(float *G, const float* Tet_Temp, const int* VTT, const int* vtt_num, \
-	const int *fixed, const int *more_fixed, const int *collision_fixed, const float *collision_normal, const float *fixed_X, const float *X, \
-	const int *index2vertex, const float control_mag, const float collision_mag, const int number)
+__global__ void Energy_Gradient_Kernel(double *G, const double* Tet_Temp, const int* VTT, const int* vtt_num, \
+	const int *fixed, const int *more_fixed, const int *collision_fixed, const double *collision_normal, const double *fixed_X, const double *X, \
+	const int *index2vertex, const double control_mag, const double collision_mag, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -1440,7 +1440,7 @@ __global__ void Energy_Gradient_Kernel(float *G, const float* Tet_Temp, const in
 	//G[number + i] = 0;
 	//G[number * 2 + i] = 0;
 	int v = index2vertex[i];
-	float sum = 0;
+	double sum = 0;
 	for (int index = vtt_num[v]; index < vtt_num[v + 1]; index++)
 	{
 		G[3 * i + 0] += Tet_Temp[VTT[index] * 3 + 0];
@@ -1464,7 +1464,7 @@ __global__ void Energy_Gradient_Kernel(float *G, const float* Tet_Temp, const in
 		}
 		else
 		{
-			float coeff = collision_mag * (\
+			double coeff = collision_mag * (\
 				(fixed_X[3 * v + 0] - X[3 * v + 0])*collision_normal[3 * v + 0] + \
 				(fixed_X[3 * v + 1] - X[3 * v + 1])*collision_normal[3 * v + 1] + \
 				(fixed_X[3 * v + 2] - X[3 * v + 2])*collision_normal[3 * v + 2]);
@@ -1475,11 +1475,11 @@ __global__ void Energy_Gradient_Kernel(float *G, const float* Tet_Temp, const in
 	}
 }
 
-__global__ void Inertia_Gradient_Kernel(float *G, const float *inertia, const float *X, const int *vertex2index, const float *M, const float inv_t, int number)
+__global__ void Inertia_Gradient_Kernel(double *G, const double *inertia, const double *X, const int *vertex2index, const double *M, const double inv_t, int number)
 {
 	int v = blockDim.x * blockIdx.x + threadIdx.x;
 	if (v >= number)	return;
-	float c = M[v] * inv_t*inv_t;
+	double c = M[v] * inv_t*inv_t;
 	int i = vertex2index[v];
 	G[3 * i + 0] += c * (inertia[3 * v + 0] - X[3 * v + 0]);
 	G[3 * i + 1] += c * (inertia[3 * v + 1] - X[3 * v + 1]);
@@ -1492,7 +1492,7 @@ __global__ void Inertia_Gradient_Kernel(float *G, const float *inertia, const fl
 	//	G[3 * i + o] += GRAVITY * M[v];
 }
 
-__global__ void Energy_Kernel_1(const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* energy_Temp, const float elasticity, const int tet_number)
+__global__ void Energy_Kernel_1(const double* X, const int* Tet, const double* inv_Dm, const double* Vol, double* energy_Temp, const double elasticity, const int tet_number)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
 	if (t >= tet_number)	return;
@@ -1502,9 +1502,9 @@ __global__ void Energy_Kernel_1(const float* X, const int* Tet, const float* inv
 	int p2 = Tet[t * 4 + 2] * 3;
 	int p3 = Tet[t * 4 + 3] * 3;
 
-	const float* idm = &inv_Dm[t * 9];
+	const double* idm = &inv_Dm[t * 9];
 
-	float Ds[9];
+	double Ds[9];
 	Ds[0] = X[p1 + 0] - X[p0 + 0];
 	Ds[3] = X[p1 + 1] - X[p0 + 1];
 	Ds[6] = X[p1 + 2] - X[p0 + 2];
@@ -1515,20 +1515,20 @@ __global__ void Energy_Kernel_1(const float* X, const int* Tet, const float* inv
 	Ds[5] = X[p3 + 1] - X[p0 + 1];
 	Ds[8] = X[p3 + 2] - X[p0 + 2];
 
-	float F[9], R[9];
-	float new_R[9];
+	double F[9], R[9];
+	double new_R[9];
 	dev_Matrix_Product_3(Ds, idm, F);
 
-	Get_Rotation((float(*)[3])F, (float(*)[3])new_R);
+	Get_Rotation((double(*)[3])F, (double(*)[3])new_R);
 
 	dev_Matrix_Substract_3(new_R, F, new_R);
 
-	float rate = sqrt(Vol[t] * elasticity *0.5);
+	double rate = sqrt(Vol[t] * elasticity *0.5);
 	for (int i = 0; i < 9; i++)
 		energy_Temp[9 * t + i] = rate * new_R[i];
 }
 
-__global__ void Energy_Kernel_StVK_1(const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* energy_Temp, const float lambda, const float mu, const int tet_number)
+__global__ void Energy_Kernel_StVK_1(const double* X, const int* Tet, const double* inv_Dm, const double* Vol, double* energy_Temp, const double lambda, const double mu, const int tet_number)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
 	if (t >= tet_number)	return;
@@ -1538,9 +1538,9 @@ __global__ void Energy_Kernel_StVK_1(const float* X, const int* Tet, const float
 	int p2 = Tet[t * 4 + 2] * 3;
 	int p3 = Tet[t * 4 + 3] * 3;
 
-	const float* idm = &inv_Dm[t * 9];
+	const double* idm = &inv_Dm[t * 9];
 
-	float Ds[9];
+	double Ds[9];
 	Ds[0] = X[p1 + 0] - X[p0 + 0];
 	Ds[3] = X[p1 + 1] - X[p0 + 1];
 	Ds[6] = X[p1 + 2] - X[p0 + 2];
@@ -1551,7 +1551,7 @@ __global__ void Energy_Kernel_StVK_1(const float* X, const int* Tet, const float
 	Ds[5] = X[p3 + 1] - X[p0 + 1];
 	Ds[8] = X[p3 + 2] - X[p0 + 2];
 
-	float F[9], E[9], Ft[9];
+	double F[9], E[9], Ft[9];
 	dev_Matrix_Product_3(Ds, idm, F);
 
 	for (int i = 0; i < 3; i++)
@@ -1565,21 +1565,21 @@ __global__ void Energy_Kernel_StVK_1(const float* X, const int* Tet, const float
 	for (int i = 0; i < 9; i++)
 		E[i] *= 0.5;
 
-	float c1 = sqrt(mu*Vol[t]), c2 = sqrt(lambda*Vol[t] / 2.0);
+	double c1 = sqrt(mu*Vol[t]), c2 = sqrt(lambda*Vol[t] / 2.0);
 
 	for (int i = 0; i < 9; i++)
 		energy_Temp[10 * t + i] = c1 * E[i];
 	energy_Temp[10 * t + 9] = c2 * (E[0] + E[4] + E[8]);
 }
 
-__global__ void Energy_Kernel_2(float *E, const float *X, const float *inertia, const int *vertex2index, const float *M, const float inv_t, \
-	const int *fixed, const float *fixed_X, const float control_mag, const int number)
+__global__ void Energy_Kernel_2(double *E, const double *X, const double *inertia, const int *vertex2index, const double *M, const double inv_t, \
+	const int *fixed, const double *fixed_X, const double control_mag, const int number)
 {
 	int v= blockDim.x * blockIdx.x + threadIdx.x;
 	if (v > number) return;
 	int i = vertex2index[v];
-	float e;
-	float d[3];
+	double e;
+	double d[3];
 	d[0] = (inertia[3 * v + 0] - X[3 * v + 0]);
 	d[1] = (inertia[3 * v + 1] - X[3 * v + 1]);
 	d[2] = (inertia[3 * v + 2] - X[3 * v + 2]);
@@ -1596,7 +1596,7 @@ __global__ void Energy_Kernel_2(float *E, const float *X, const float *inertia, 
 }
 
 
-__global__ void MF_Diag_Update_Kernel(float *Y,const float *Diag, const float *X, const int number)
+__global__ void MF_Diag_Update_Kernel(double *Y,const double *Diag, const double *X, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -1609,7 +1609,7 @@ __global__ void MF_Diag_Update_Kernel(float *Y,const float *Diag, const float *X
 			Y[i * 3 + di] += Diag[9 * i + dj * 3 + di] * X[i * 3 + dj];
 }
 
-__global__ void MF_Diag_Inverse_Kernel(float *Y, const float *Diag, const float *Diag_addition, const float *X, const int number)
+__global__ void MF_Diag_Inverse_Kernel(double *Y, const double *Diag, const double *Diag_addition, const double *X, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -1619,7 +1619,7 @@ __global__ void MF_Diag_Inverse_Kernel(float *Y, const float *Diag, const float 
 	Y[i * 3 + 2] = X[i * 3 + 2] / (Diag[9 * i + 8] + Diag_addition[9 * i + 8]);
 }
 
-__global__ void UtAUs_Diag_Update_First_Path_Kernel(float *UtAUs_Diag_addition, const float *MF_Diag_addition, const float *precomputed_4x4, const int *update_offset, int number)
+__global__ void UtAUs_Diag_Update_First_Path_Kernel(double *UtAUs_Diag_addition, const double *MF_Diag_addition, const double *precomputed_4x4, const int *update_offset, int number)
 {
 	int i = blockIdx.x*blockDim.x / 16 + threadIdx.x / 16;
 	if (i > number) return;
@@ -1630,7 +1630,7 @@ __global__ void UtAUs_Diag_Update_First_Path_Kernel(float *UtAUs_Diag_addition, 
 	atomicAdd(UtAUs_Diag_addition + 144 * update_offset[po] + (px * 4 + tx) * 12 + py * 4 + ty, MF_Diag_addition[i] * precomputed_4x4[16 * po + 4 * tx + ty]);
 }
 
-__global__ void UtAUs_Diag_Update_Second_Path_Kernel(float *UtAUs_Diag_addition, const float *temp_Diag_addition, const int *update_offset, int number)
+__global__ void UtAUs_Diag_Update_Second_Path_Kernel(double *UtAUs_Diag_addition, const double *temp_Diag_addition, const int *update_offset, int number)
 {
 	int i = blockIdx.x*blockDim.y + threadIdx.y;
 	if (i > number) return;
@@ -1638,7 +1638,7 @@ __global__ void UtAUs_Diag_Update_Second_Path_Kernel(float *UtAUs_Diag_addition,
 	atomicAdd(UtAUs_Diag_addition + 144 * update_offset[i] + off, temp_Diag_addition[144 * i + off]);
 }
 
-__global__ void UtAUs_Diag_Update_Third_Path_Kernel(float *UtAUs_Val, const float *UtAUs_Diag_addition, int ldim, int number)
+__global__ void UtAUs_Diag_Update_Third_Path_Kernel(double *UtAUs_Val, const double *UtAUs_Diag_addition, int ldim, int number)
 {
 	int i = blockIdx.x*blockDim.y + threadIdx.y;
 	if (i > number) return;
@@ -1648,7 +1648,7 @@ __global__ void UtAUs_Diag_Update_Third_Path_Kernel(float *UtAUs_Val, const floa
 }
 
 
-__global__ void UtAUs_Diag_Update_Kernel(float *Y, const float *Diag, const float *X, const int number)
+__global__ void UtAUs_Diag_Update_Kernel(double *Y, const double *Diag, const double *X, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -1660,7 +1660,7 @@ __global__ void UtAUs_Diag_Update_Kernel(float *Y, const float *Diag, const floa
 			Y[i * 12 + di] += Diag[144 * i + dj * 12 + di] * X[i * 12 + dj];
 }
 
-__global__ void UtAUs_Diag_Inverse_Kernel(float *Y, const float *Diag, const float *Diag_addition, const float *X, const int number)
+__global__ void UtAUs_Diag_Inverse_Kernel(double *Y, const double *Diag, const double *Diag_addition, const double *X, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -1668,7 +1668,7 @@ __global__ void UtAUs_Diag_Inverse_Kernel(float *Y, const float *Diag, const flo
 		Y[i * 12 + di] = X[i * 12 + di] / (Diag[144 * i + di * 13] + Diag_addition[144 * i + di * 13]);
 }
 
-__global__ void Colored_GS_MF_Kernel(float *X, const float *MF_Diag,const float *MF_Diag_addition,const float *b, const int base, const int number)
+__global__ void Colored_GS_MF_Kernel(double *X, const double *MF_Diag,const double *MF_Diag_addition,const double *b, const int base, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -1676,14 +1676,14 @@ __global__ void Colored_GS_MF_Kernel(float *X, const float *MF_Diag,const float 
 	solve3x3(MF_Diag + 9 * t, MF_Diag_addition + 9 * t, b + 3 * t, X + 3 * t);
 }
 
-__global__ void Jacobi_Kernel(float *X, const float *A_Val, const float *MF_Diag_addition, const float *b, const int *D_offset, const int number)
+__global__ void Jacobi_Kernel(double *X, const double *A_Val, const double *MF_Diag_addition, const double *b, const int *D_offset, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number) return;
 	solve3x3(A_Val + 9 * D_offset[i], MF_Diag_addition + 9 * i, b + 3 * i, X + 3 * i);
 }
 
-__global__ void Colored_GS_UtAU_Kernel(float *X, const float *UtAU_Diag,const float *UtAU_Diag_addition, const float *b, const int base, const int number)
+__global__ void Colored_GS_UtAU_Kernel(double *X, const double *UtAU_Diag,const double *UtAU_Diag_addition, const double *b, const int base, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -1692,7 +1692,7 @@ __global__ void Colored_GS_UtAU_Kernel(float *X, const float *UtAU_Diag,const fl
 }
 
 
-__global__ void Update_DeltaX_Kernel(float *X, const float *deltaX, const int *index2vertex, const int number)
+__global__ void Update_DeltaX_Kernel(double *X, const double *deltaX, const int *index2vertex, const int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -1705,7 +1705,7 @@ __global__ void Update_DeltaX_Kernel(float *X, const float *deltaX, const int *i
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Constraint Kernel 2
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Constraint_2_Kernel(float* prev_X, float* X, float* next_X, float omega, int number)
+__global__ void Constraint_2_Kernel(double* prev_X, double* X, double* next_X, double omega, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;	
@@ -1722,12 +1722,12 @@ __global__ void Constraint_2_Kernel(float* prev_X, float* X, float* next_X, floa
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Constraint Kernel 3
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Constraint_3_Kernel(float* X, float* init_B, float* V, const float *M,const float *fixed, const float *more_fixed, float inv_t, int number)
+__global__ void Constraint_3_Kernel(double* X, double* init_B, double* V, const double *M,const double *fixed, const double *more_fixed, double inv_t, int number)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;
 
-	float c=(M[i]+fixed[i]+more_fixed[i])*inv_t*inv_t;
+	double c=(M[i]+fixed[i]+more_fixed[i])*inv_t*inv_t;
 	V[i*3+0]+=(X[i*3+0]-init_B[i*3+0]/c)*inv_t;
 	V[i*3+1]+=(X[i*3+1]-init_B[i*3+1]/c)*inv_t;
 	V[i*3+2]+=(X[i*3+2]-init_B[i*3+2]/c)*inv_t;
@@ -1761,7 +1761,7 @@ public:
 	typedef std::pair<TYPE, int> shortestType;
 	FILE *benchmark;
 
-	float *relaxation;
+	double *relaxation;
 
 	TYPE	cost[8];
 	int		cost_ptr;
@@ -2146,7 +2146,7 @@ public:
 	{
 		cost_ptr= 0;
 
-		relaxation = new float;
+		relaxation = new double;
 
 		old_X	= new TYPE	[max_number*3];
 		V		= new TYPE	[max_number*3];
@@ -2248,7 +2248,7 @@ public:
 //  Initialize functions
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-	float hue2rgb(float p, float q, float t)
+	double hue2rgb(double p, double q, double t)
 	{
 		if (t < 0.0) t += 1.0;
 		if (t > 1.0) t -= 1.0;
@@ -2329,16 +2329,16 @@ public:
 		// color
 		if (layer)
 		{
-			float h, s = .75, l = .5;
+			double h, s = .75, l = .5;
 			for (int i = 0; i < number; i++)
 			{
 				int h0 = i;
 				for (int ll = layer; ll; ll--)
 				{
 					h0 = handle[ll][h0];
-					h = float(h0) / (handles_num[ll - 1] - 1);
-					float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
-					float p = 2.0 * l - q;
+					h = double(h0) / (handles_num[ll - 1] - 1);
+					double q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+					double p = 2.0 * l - q;
 					vertex_colors[ll - 1][3 * i + 0] = hue2rgb(p, q, h + 1.0 / 3);
 					vertex_colors[ll - 1][3 * i + 1] = hue2rgb(p, q, h);
 					vertex_colors[ll - 1][3 * i + 2] = hue2rgb(p, q, h - 1.0 / 3);
@@ -2368,11 +2368,11 @@ public:
 
 		//	size += (dims[l + 1] + 1)*sizeof(int);
 		//	size += Us_nnz[l]*sizeof(int);
-		//	size += Us_nnz[l] * sizeof(float);
+		//	size += Us_nnz[l] * sizeof(double);
 
 		//	size += (dims[l] + 1) * sizeof(int);
 		//	size += Us_nnz[l] * sizeof(int);
-		//	size += Us_nnz[l] * sizeof(float);
+		//	size += Us_nnz[l] * sizeof(double);
 
 		//}
 		//for (int l = 0; l < layer; l++)
@@ -2381,14 +2381,14 @@ public:
 		//	if (stored_as_dense[l])
 		//	{
 		//		outputDense<TYPE>(filename, handles_num[l], handles_num[l], UtAUs_Val[l]);
-		//		size += (handles_num[l] * handles_num[l] * 144)*sizeof(float);
+		//		size += (handles_num[l] * handles_num[l] * 144)*sizeof(double);
 		//	}
 		//	else
 		//	{
 		//		outputBoo<TYPE>(filename, handles_num[l], handles_num[l], UtAUs_rowInd[l], UtAUs_colInd[l], UtAUs_Val[l], UtAUs_nnz[l], 12);
 		//		size += (handles_num[l] + 1) * sizeof(int);
 		//		size += UtAUs_nnz[l] * sizeof(int);
-		//		size += UtAUs_nnz[l] * 144 * sizeof(float);
+		//		size += UtAUs_nnz[l] * 144 * sizeof(double);
 		//	}
 		//	//sprintf(filename, "benchmark\\order-i2v-%d.txt", l);
 		//	//outputVector<int>(filename, handles_num[l], index2vertex[l], 0);
@@ -2692,7 +2692,7 @@ public:
 		{
 			shortestPathType top = pq.top();
 			pq.pop();
-			float dist = top.st.first;
+			double dist = top.st.first;
 			int from = top.st.second;
 			int what = top.what;
 			if (dist > sd[what].first) continue;
@@ -3655,7 +3655,7 @@ public:
 			err = cudaMalloc((void**)&dev_Uts_colInd[l], sizeof(int)*Us_nnz[l]);
 			err = cudaMalloc((void**)&dev_Uts_Val[l], sizeof(TYPE)*Us_nnz[l]);
 
-			cuspErr = cusparseScsr2csc(cusparseHandle, dims[l + 1], dims[l], Us_nnz[l], dev_Us_Val[l], dev_Us_rowPtr[l], dev_Us_colInd[l], \
+			cuspErr = cusparseDcsr2csc(cusparseHandle, dims[l + 1], dims[l], Us_nnz[l], dev_Us_Val[l], dev_Us_rowPtr[l], dev_Us_colInd[l], \
 				dev_Uts_Val[l], dev_Uts_colInd[l], dev_Uts_rowPtr[l], CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO);
 
 		}
@@ -3809,12 +3809,12 @@ public:
 			cusolverSpXcsrluAnalysisHost(cusolverSpHandle, 3 * number, MF_PD_nnz, descr, \
 				MF_PD_reordered_rowPtr, MF_PD_reordered_colInd, MF_PD_info);
 			size_t internal_size;
-			cusolverSpScsrluBufferInfoHost(cusolverSpHandle, 3 * number, MF_PD_nnz, descr, \
+			cusolverSpDcsrluBufferInfoHost(cusolverSpHandle, 3 * number, MF_PD_nnz, descr, \
 				MF_PD_reordered_Val, MF_PD_reordered_rowPtr, MF_PD_reordered_colInd, MF_PD_info, &internal_size, &buffer_size);
 			printf("A size: %d\ninternal size:%d\nlu size: %d\n", sizeof(TYPE)*MF_PD_nnz, internal_size, buffer_size);
 			delete[] MF_PD_buffer;
 			MF_PD_buffer = malloc(buffer_size);
-			cusolverSpScsrluFactorHost(cusolverSpHandle, 3 * number, MF_PD_nnz, descr, \
+			cusolverSpDcsrluFactorHost(cusolverSpHandle, 3 * number, MF_PD_nnz, descr, \
 				MF_PD_reordered_Val, MF_PD_reordered_rowPtr, MF_PD_reordered_colInd, MF_PD_info, 1.0, MF_PD_buffer);
 
 			PD_B = new TYPE[3 * number];
@@ -3898,8 +3898,8 @@ public:
 
 		for (int l = layer - 1; l >= 0; l--)
 		{
-			err = cudaMalloc((void**)&dev_UtAUs_Diag_addition[l], sizeof(float)*handles_num[l] * 144);
-			cudaMemset(dev_UtAUs_Diag_addition[l], 0, sizeof(float)*handles_num[l] * 144);
+			err = cudaMalloc((void**)&dev_UtAUs_Diag_addition[l], sizeof(double)*handles_num[l] * 144);
+			cudaMemset(dev_UtAUs_Diag_addition[l], 0, sizeof(double)*handles_num[l] * 144);
 
 			if (stored_as_dense[l])
 			{
@@ -3909,34 +3909,34 @@ public:
 					for (int dx = 0; dx < 12; dx++)
 						for (int dy = 0; dy < 12; dy++)
 							temp[dims[l] * (UtAUs_colInd[l][i] * 12 + dy) + UtAUs_rowInd[l][i] * 12 + dx] = UtAUs_Val[l][144 * i + 12 * dx + dy];
-				err = cudaMalloc((void**)&dev_UtAUs_Val[l], sizeof(float)*dims[l] * dims[l]);
-				err = cudaMemcpy(dev_UtAUs_Val[l], temp, sizeof(float)*dims[l] * dims[l], cudaMemcpyHostToDevice);
+				err = cudaMalloc((void**)&dev_UtAUs_Val[l], sizeof(double)*dims[l] * dims[l]);
+				err = cudaMemcpy(dev_UtAUs_Val[l], temp, sizeof(double)*dims[l] * dims[l], cudaMemcpyHostToDevice);
 				delete[] temp;
 
 				err = cudaMalloc(&dev_UtAUs_D_Val[l], sizeof(TYPE)*handles_num[l] * 144);
 				err = cudaMemcpy(dev_UtAUs_D_Val[l], UtAUs_D_Val[l], sizeof(TYPE)*handles_num[l] * 144, cudaMemcpyHostToDevice);
 
 				chol_bufferSize = 0;
-				cusolverDnSpotrf_bufferSize(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_Val[l], dims[l], &chol_bufferSize);
+				cusolverDnDpotrf_bufferSize(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_Val[l], dims[l], &chol_bufferSize);
 				cudaMalloc(&dev_chol_info, sizeof(int));
 				cudaMalloc(&dev_UtAUs_chol, sizeof(TYPE)*dims[l] * dims[l]);
 				cudaMalloc(&dev_chol_fixed, sizeof(TYPE)*dims[l]);
 				cudaMalloc(&dev_chol_buffer, sizeof(TYPE)*chol_bufferSize);
 
-				cudaMemcpy(dev_UtAUs_chol, dev_UtAUs_Val[l], sizeof(float)*dims[l] * dims[l], cudaMemcpyDeviceToDevice);
+				cudaMemcpy(dev_UtAUs_chol, dev_UtAUs_Val[l], sizeof(double)*dims[l] * dims[l], cudaMemcpyDeviceToDevice);
 				UtAUs_Diag_Update_Third_Path_Kernel << <(handles_num[l] + UtAUs_threadPerBlock - 1) / UtAUs_threadPerBlock, dim3(144, UtAUs_threadPerBlock) >> > \
 					(dev_UtAUs_chol, dev_UtAUs_Diag_addition[l], handles_num[l], handles_num[l]);
 
-				float fix = 1e-5;
-				float *h_fix = new float[dims[l]];
+				double fix = 1e-5;
+				double *h_fix = new double[dims[l]];
 				for (int i = 0; i < dims[l]; i++)
 					h_fix[i] = fix;
 				cudaMemcpy(dev_chol_fixed, h_fix, sizeof(TYPE)*dims[l], cudaMemcpyHostToDevice);
 
-				//cublasSaxpy(cublasHandle, dims[l], &one, dev_chol_fixed, 1, dev_UtAUs_chol, dims[l] + 1);
+				//cublasDaxpy(cublasHandle, dims[l], &one, dev_chol_fixed, 1, dev_UtAUs_chol, dims[l] + 1);
 
 				cudaMemset(dev_chol_info, 0, sizeof(int));
-				cusolverDnSpotrf(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_chol, dims[l], dev_chol_buffer, chol_bufferSize, dev_chol_info);
+				cusolverDnDpotrf(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_chol, dims[l], dev_chol_buffer, chol_bufferSize, dev_chol_info);
 				int check;
 				cudaMemcpy(&check, dev_chol_info, sizeof(int), cudaMemcpyDeviceToHost);
 				printf("\ncheck=%d\n", check);
@@ -4037,9 +4037,9 @@ public:
 	void Diag_fix()
 	{
 		if (!layer) return;
-		float *evd4x4 = new float[handles_num[layer - 1] * 16];
+		double *evd4x4 = new double[handles_num[layer - 1] * 16];
 		int *control_num = new int[handles_num[layer - 1]];
-		memset(evd4x4, 0, sizeof(float)*handles_num[layer - 1] * 16);
+		memset(evd4x4, 0, sizeof(double)*handles_num[layer - 1] * 16);
 		memset(control_num, 0, sizeof(int)*handles_num[layer - 1]);
 		for (int i = 0; i < number; i++)
 		{
@@ -4047,29 +4047,29 @@ public:
 			for (int dx = 0; dx < 4; dx++)
 				for (int dy = 0; dy < 4; dy++)
 				{
-					float v1 = (dx == 3) ? 1.0 : X[3 * i + dx];
-					float v2 = (dy == 3) ? 1.0 : X[3 * i + dy];
+					double v1 = (dx == 3) ? 1.0 : X[3 * i + dx];
+					double v2 = (dy == 3) ? 1.0 : X[3 * i + dy];
 					evd4x4[16 * index + 4 * dx + dy] += v1 * v2;
 				}
 			control_num[index]++;
 		}
-		float *diag_fix=new float[16 * handles_num[layer - 1]];
-		float *V=new float[16], *W=new float[4];
-		float *d_A, *d_W, *d_work;
+		double *diag_fix=new double[16 * handles_num[layer - 1]];
+		double *V=new double[16], *W=new double[4];
+		double *d_A, *d_W, *d_work;
 		int temp, *d_info;
-		memset(diag_fix, 0, sizeof(float) * 16 * handles_num[layer - 1]);
-		cudaMalloc(&d_A, sizeof(float) * 16);
-		cudaMalloc(&d_W, sizeof(float) * 4);
+		memset(diag_fix, 0, sizeof(double) * 16 * handles_num[layer - 1]);
+		cudaMalloc(&d_A, sizeof(double) * 16);
+		cudaMalloc(&d_W, sizeof(double) * 4);
 		cudaMalloc(&d_info, sizeof(int));
 
 		for (int i = 0; i < handles_num[layer - 1]; i++)
 		{
-			cudaMemcpy(d_A, evd4x4 + 16 * i, sizeof(float) * 16, cudaMemcpyHostToDevice);
-			cusolverDnSsyevd_bufferSize(cusolverDnHandle, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER, 4, d_A, 4, d_W, &temp);
-			cudaMalloc(&d_work, sizeof(float)*temp);
-			cusolverDnSsyevd(cusolverDnHandle, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER, 4, d_A, 4, d_W, d_work, temp, d_info);
-			cudaMemcpy(W, d_W, sizeof(float) * 4, cudaMemcpyDeviceToHost);
-			cudaMemcpy(V, d_A, sizeof(float) * 16, cudaMemcpyDeviceToHost);
+			cudaMemcpy(d_A, evd4x4 + 16 * i, sizeof(double) * 16, cudaMemcpyHostToDevice);
+			cusolverDnDsyevd_bufferSize(cusolverDnHandle, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER, 4, d_A, 4, d_W, &temp);
+			cudaMalloc(&d_work, sizeof(double)*temp);
+			cusolverDnDsyevd(cusolverDnHandle, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_LOWER, 4, d_A, 4, d_W, d_work, temp, d_info);
+			cudaMemcpy(W, d_W, sizeof(double) * 4, cudaMemcpyDeviceToHost);
+			cudaMemcpy(V, d_A, sizeof(double) * 16, cudaMemcpyDeviceToHost);
 			cudaMemcpy(&temp, d_info, sizeof(int), cudaMemcpyDeviceToHost);
 			if (temp) printf("warning svd:%d\n", i);
 			for(int j=0;j<4;j++)
@@ -4079,7 +4079,7 @@ public:
 					)
 				{
 					printf("rank+1\n");
-					float norm = 0;
+					double norm = 0;
 					for (int dx = 0; dx < 4; dx++)
 						norm += V[4 * j + dx] * V[4 * j + dx];
 					for (int dx = 0; dx < 4; dx++)
@@ -4088,21 +4088,21 @@ public:
 				}
 		}
 
-		float *UtAUs_Diag_rank_fix = new float[handles_num[layer - 1] * 144];
-		memset(UtAUs_Diag_rank_fix, 0, sizeof(float)*handles_num[layer - 1] * 144);
+		double *UtAUs_Diag_rank_fix = new double[handles_num[layer - 1] * 144];
+		memset(UtAUs_Diag_rank_fix, 0, sizeof(double)*handles_num[layer - 1] * 144);
 		for (int i = 0; i < handles_num[layer - 1]; i++)
 			for (int c = 0; c < 3; c++)
 				for (int dx = 0; dx < 4; dx++)
 					for (int dy = 0; dy < 4; dy++)
 						UtAUs_Diag_rank_fix[144 * i + (c * 4 + dx) * 12 + (c * 4 + dy)] = diag_fix[16 * i + 4 * dx + dy];
-		cudaMalloc(&dev_UtAUs_Diag_rank_fix, sizeof(float)*handles_num[layer - 1] * 144);
-		cudaMemcpy(dev_UtAUs_Diag_rank_fix, UtAUs_Diag_rank_fix, sizeof(float)*handles_num[layer - 1] * 144, cudaMemcpyHostToDevice);
+		cudaMalloc(&dev_UtAUs_Diag_rank_fix, sizeof(double)*handles_num[layer - 1] * 144);
+		cudaMemcpy(dev_UtAUs_Diag_rank_fix, UtAUs_Diag_rank_fix, sizeof(double)*handles_num[layer - 1] * 144, cudaMemcpyHostToDevice);
 
-		float *chol_fixed = new float[dims[0]];
+		double *chol_fixed = new double[dims[0]];
 		for (int i = 0; i < dims[0]; i++)
 			chol_fixed[i] = 1e-5;
-		cudaMalloc(&dev_chol_fixed, sizeof(float)*dims[0]);
-		cudaMemcpy(dev_chol_fixed, chol_fixed, sizeof(float)*dims[0], cudaMemcpyHostToDevice);
+		cudaMalloc(&dev_chol_fixed, sizeof(double)*dims[0]);
+		cudaMemcpy(dev_chol_fixed, chol_fixed, sizeof(double)*dims[0], cudaMemcpyHostToDevice);
 	}
 
 	void prepare_Diag_Part()
@@ -4162,10 +4162,10 @@ public:
 		//			precomputed_Diag_addition[i * 16 + 4 * dj + di] = v1 * v2;
 		//		}
 		//}
-		//cudaErr = cudaMalloc(&dev_precomputed_Diag_addition, sizeof(float)*number * 16);
-		//cudaErr = cudaMemcpy(dev_precomputed_Diag_addition, precomputed_Diag_addition, sizeof(float)*number * 16, cudaMemcpyHostToDevice);
+		//cudaErr = cudaMalloc(&dev_precomputed_Diag_addition, sizeof(double)*number * 16);
+		//cudaErr = cudaMemcpy(dev_precomputed_Diag_addition, precomputed_Diag_addition, sizeof(double)*number * 16, cudaMemcpyHostToDevice);
 
-		////cudaErr = cudaMalloc(&dev_MF_Diag_addition, sizeof(float)*number);
+		////cudaErr = cudaMalloc(&dev_MF_Diag_addition, sizeof(double)*number);
 
 		//// things to use atomic add
 		//if (layer)
@@ -4174,7 +4174,7 @@ public:
 		//	dev_where_to_update = (int**)malloc(sizeof(int*)*layer);
 		//	for (int l = layer; l >= 0; l--)
 		//	{
-		//		cudaMalloc(&dev_UtAUs_Diag_addition[l], sizeof(float) * 144 * handles_num[l]);
+		//		cudaMalloc(&dev_UtAUs_Diag_addition[l], sizeof(double) * 144 * handles_num[l]);
 		//		cudaMalloc(&dev_where_to_update[l], sizeof(int)*handles_num[l + 1]);
 		//		int *where_to_update = new int[handles_num[l + 1]];
 		//		for (int i = 0; i < handles_num[l + 1]; i++)
@@ -4200,55 +4200,55 @@ public:
 //  Update functions
 ///////////////////////////////////////////////////////////////////////////////////////////
 	//some functions
-	void Diag_Update(int l, float* AP, const float* alpha, const float* P)
+	void Diag_Update(int l, double* AP, const double* alpha, const double* P)
 	{
 		cudaError_t cudaErr;
 		cusparseStatus_t cuspErr;
 		cublasStatus_t cublasStatus;
 		TIMER timer;
-		//cublasStatus=cublasScopy(cublasHandle, dims[l], P, 1, dev_temp_X[l], 1);
+		//cublasStatus=cublasDcopy(cublasHandle, dims[l], P, 1, dev_temp_X[l], 1);
 #ifdef PRECOMPUTE_DENSE_UPDATE	
 		if (l == layer)
 		{
 			MG_Diag_Update_Kernel << <((dims[layer] + threadsPerBlock - 1) / threadsPerBlock), threadsPerBlock >> > (dev_temp_X[layer], dev_VC, dims[layer]);
-			cublasStatus = cublasSaxpy(cublasHandle, dims[l], alpha, dev_temp_X[l], 1, AP, 1);
+			cublasStatus = cublasDaxpy(cublasHandle, dims[l], alpha, dev_temp_X[l], 1, AP, 1);
 		}
 		else
 		{
 			//timer.Start();
-			//cublasStatus = cublasSgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], &one, dev_delta_UtAUs_Val_Dense[l], dims[l], \
+			//cublasStatus = cublasDgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], &one, dev_delta_UtAUs_Val_Dense[l], dims[l], \
 			//	dev_temp_X[l], 1, &zero, &dev_temp_X[l][dims[l]], 1);
 			//cudaDeviceSynchronize();
 			//printf("layer %d:%f\n", l, timer.Get_Time());
-			//cublasStatus = cublasSaxpy(cublasHandle, dims[l], alpha, &dev_temp_X[l][dims[l]], 1, AP, 1);
+			//cublasStatus = cublasDaxpy(cublasHandle, dims[l], alpha, &dev_temp_X[l][dims[l]], 1, AP, 1);
 
 		}
 #endif
 #ifdef DEFAULT_UPDATE
 		// default
-		//cublasStatus=cublasScopy(cublasHandle, dims[l], P, 1, dev_temp_X[l], 1);
+		//cublasStatus=cublasDcopy(cublasHandle, dims[l], P, 1, dev_temp_X[l], 1);
 		//for (int i = l; i < layer ; i++)
 		//	{
-		//		cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i + 1], dims[i], Us_nnz[i], \
+		//		cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i + 1], dims[i], Us_nnz[i], \
 		//			&one, descr, dev_Us_Val[i], dev_Us_rowPtr[i], dev_Us_colInd[i], dev_temp_X[i], &zero, dev_temp_X[i + 1]);
 		//	}
 		//MF_Diag_Update_Kernel << <((dims[layer] + threadsPerBlock - 1) / threadsPerBlock), threadsPerBlock >> > (dev_temp_X[layer], dev_temp_X[layer], dev_MF_Diag_addition, dims[layer]);
 		//for (int i = layer - 1; i >= l; i--)
 		//	{
-		//		cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i], dims[i + 1], Us_nnz[i], \
+		//		cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i], dims[i + 1], Us_nnz[i], \
 		//			&one, descr, dev_Uts_Val[i], dev_Uts_rowPtr[i], dev_Uts_colInd[i], dev_temp_X[i + 1], &zero, dev_temp_X[i]);
 		//	}
 		if (l == layer)
 			MF_Diag_Update_Kernel << <((number + threadsPerBlock - 1) / threadsPerBlock), threadsPerBlock >> > (dev_temp_X[l], dev_MF_Diag_addition, P, number);
 		else
 			UtAUs_Diag_Update_Kernel << <((handles_num[l] + threadsPerBlock - 1) / threadsPerBlock), threadsPerBlock >> > (dev_temp_X[l], dev_UtAUs_Diag_addition[l], P, handles_num[l]);
-		cublasStatus = cublasSaxpy(cublasHandle, dims[l], alpha, dev_temp_X[l], 1, AP, 1);
+		cublasStatus = cublasDaxpy(cublasHandle, dims[l], alpha, dev_temp_X[l], 1, AP, 1);
 #endif
 #ifdef VECTOR_UPDATE
 		if (l == layer)
 		{
 			MG_Diag_Update_Kernel << <((dims[layer] + threadsPerBlock - 1) / threadsPerBlock), threadsPerBlock >> > (dev_temp_X[layer], dev_VC, dims[layer]);
-			cublasStatus = cublasSaxpy(cublasHandle, dims[l], alpha, dev_temp_X[l], 1, AP, 1);
+			cublasStatus = cublasDaxpy(cublasHandle, dims[l], alpha, dev_temp_X[l], 1, AP, 1);
 		}
 		else
 		{
@@ -4256,44 +4256,44 @@ public:
 			{
 				for (int i = l; i < layer - 1; i++)
 				{
-					cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i + 1], dims[i], Us_nnz[i], \
+					cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i + 1], dims[i], Us_nnz[i], \
 						&one, descr, dev_Us_Val[i], dev_Us_rowPtr[i], dev_Us_colInd[i], dev_temp_X[i], &zero, dev_temp_X[i + 1]);
 				}
 
-				cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, sub_U_non_zero_row_number, dims[layer - 1], sub_U_nnz, &control_mag, descr, dev_sub_U_Val, dev_sub_U_rowPtr, \
+				cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, sub_U_non_zero_row_number, dims[layer - 1], sub_U_nnz, &control_mag, descr, dev_sub_U_Val, dev_sub_U_rowPtr, \
 					dev_sub_U_colInd, dev_temp_X[layer - 1], &zero, dev_temp_X[layer]);
 
-				//cudaErr = cudaMemset(&dev_temp_X[layer - 1][dims[layer - 1]], 0, sizeof(float)*dims[layer - 1]);
-				//cudaErr = cudaMemcpy(result_coeff, dev_temp_X[layer], sizeof(float)*(sub_U_non_zero_row_number), cudaMemcpyDeviceToHost);
+				//cudaErr = cudaMemset(&dev_temp_X[layer - 1][dims[layer - 1]], 0, sizeof(double)*dims[layer - 1]);
+				//cudaErr = cudaMemcpy(result_coeff, dev_temp_X[layer], sizeof(double)*(sub_U_non_zero_row_number), cudaMemcpyDeviceToHost);
 
 				//for (int i = 0; i < sub_U_non_zero_row_number; i++)
 				//{
 				//	int v = sub_U_non_zero_row_index[i];
 				//	int start = Us_rowPtr[layer - 1][v];
-				//	cuspErr = cusparseSaxpyi(cusparseHandle, Us_rowPtr[layer - 1][v + 1] - start, &result_coeff[i], &dev_Us_Val[layer - 1][start], &dev_Us_colInd[layer - 1][start], \
+				//	cuspErr = cusparseDaxpyi(cusparseHandle, Us_rowPtr[layer - 1][v + 1] - start, &result_coeff[i], &dev_Us_Val[layer - 1][start], &dev_Us_colInd[layer - 1][start], \
 				//		&dev_temp_X[layer - 1][dims[layer - 1]], CUSPARSE_INDEX_BASE_ZERO);
 				//}
 
 				//for (int i = layer - 2; i >= l; i--)
 				//{
-				//	cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i], dims[i + 1], Us_nnz[i], \
+				//	cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i], dims[i + 1], Us_nnz[i], \
 				//		&one, descr, dev_Uts_Val[i], dev_Uts_rowPtr[i], dev_Uts_colInd[i], &dev_temp_X[i + 1][dims[i+1]], &zero, &dev_temp_X[i][dims[i]]);
 				//}
-				//cublasStatus = cublasSaxpy(cublasHandle, dims[l], alpha, &dev_temp_X[l][dims[l]], 1, AP, 1);
+				//cublasStatus = cublasDaxpy(cublasHandle, dims[l], alpha, &dev_temp_X[l][dims[l]], 1, AP, 1);
 
-				cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_TRANSPOSE, sub_U_non_zero_row_number, dims[layer - 1], sub_U_nnz, &one, descr, dev_sub_U_Val, dev_sub_U_rowPtr, \
+				cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_TRANSPOSE, sub_U_non_zero_row_number, dims[layer - 1], sub_U_nnz, &one, descr, dev_sub_U_Val, dev_sub_U_rowPtr, \
 					dev_sub_U_colInd, dev_temp_X[layer], &zero, dev_temp_X[layer - 1]);
 				for (int i = layer - 2; i >= l; i--)
 				{
-					cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i], dims[i + 1], Us_nnz[i], \
+					cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[i], dims[i + 1], Us_nnz[i], \
 						&one, descr, dev_Uts_Val[i], dev_Uts_rowPtr[i], dev_Uts_colInd[i], dev_temp_X[i + 1], &zero, dev_temp_X[i]);
 				}
-				cublasStatus = cublasSaxpy(cublasHandle, dims[l], alpha, dev_temp_X[l], 1, AP, 1);
+				cublasStatus = cublasDaxpy(cublasHandle, dims[l], alpha, dev_temp_X[l], 1, AP, 1);
 			}
 		}
 #endif
 	}
-	void calculateAP(int l, float *AP, const float *alpha,float *P)
+	void calculateAP(int l, double *AP, const double *alpha,double *P)
 	{
 		cudaError_t cudaErr;
 		cusparseStatus_t cuspErr;
@@ -4301,12 +4301,12 @@ public:
 #ifdef PRECOMPUTE_DENSE_UPDATE
 		if (l == layer)
 		{
-			cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l], dims[l], MF_nnz, alpha, descr, dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, P, &one, AP);
+			cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l], dims[l], MF_nnz, alpha, descr, dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, P, &one, AP);
 			Diag_Update(l, AP, alpha, P);
 		}
 		else
 		{
-			cublasStatus = cublasSgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], alpha, dev_delta_UtAUs_Val_Dense[l], dims[l], \
+			cublasStatus = cublasDgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], alpha, dev_delta_UtAUs_Val_Dense[l], dims[l], \
 				P, 1, &one, AP, 1);
 		}
 #endif
@@ -4315,34 +4315,34 @@ public:
 		{
 			if (stored_as_LDU[l])
 			{
-				cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_L_nnz, alpha, descr, \
+				cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_L_nnz, alpha, descr, \
 					dev_MF_L_Val, dev_MF_L_rowPtr, dev_MF_L_colInd, 3, P, &one, AP);
-				cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_D_nnz, alpha, descr, \
+				cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_D_nnz, alpha, descr, \
 					dev_MF_D_Val, dev_MF_D_rowPtr, dev_MF_D_colInd, 3, P, &one, AP);
-				cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_U_nnz, alpha, descr, \
+				cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_U_nnz, alpha, descr, \
 					dev_MF_U_Val, dev_MF_U_rowPtr, dev_MF_U_colInd, 3, P, &one, AP);
 			}
 			else
-				cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_L_nnz, alpha, descr, \
+				cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_L_nnz, alpha, descr, \
 					dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, 3, P, &one, AP);
 		}
 		else
 		{
 			if (stored_as_dense[l])
-				cublasStatus = cublasSgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], alpha, dev_UtAUs_Val[l], dims[l], P, 1, &one, AP, 1);
+				cublasStatus = cublasDgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], alpha, dev_UtAUs_Val[l], dims[l], P, 1, &one, AP, 1);
 			else
 			{
 				if (stored_as_LDU[l])
 				{
-					cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], UtAUs_L_nnz[l], \
+					cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], UtAUs_L_nnz[l], \
 						alpha, descr, dev_UtAUs_L_Val[l], dev_UtAUs_L_rowPtr[l], dev_UtAUs_L_colInd[l], 12, P, &one, AP);
-					cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], UtAUs_D_nnz[l], \
+					cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], UtAUs_D_nnz[l], \
 						alpha, descr, dev_UtAUs_D_Val[l], dev_UtAUs_D_rowPtr[l], dev_UtAUs_D_colInd[l], 12, P, &one, AP);
-					cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], UtAUs_U_nnz[l], \
+					cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], UtAUs_U_nnz[l], \
 						alpha, descr, dev_UtAUs_U_Val[l], dev_UtAUs_U_rowPtr[l], dev_UtAUs_U_colInd[l], 12, P, &one, AP);
 				}
 				else
-					cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], UtAUs_nnz[l], \
+					cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], UtAUs_nnz[l], \
 						alpha, descr, dev_UtAUs_Val[l], dev_UtAUs_rowPtr[l], dev_UtAUs_colInd[l], 12, P, &one, AP);
 			}
 		}
@@ -4350,26 +4350,26 @@ public:
 #endif
 #ifdef VECTOR_UPDATE
 		if (l == layer)
-			cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l], dims[l], MF_nnz, alpha, descr, dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, P, &one, AP);
+			cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l], dims[l], MF_nnz, alpha, descr, dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, P, &one, AP);
 		else
 		{
-			cublasStatus = cublasSgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], alpha, dev_UtAUs_Val_Dense[l], dims[l], P, 1, &one, AP, 1);
+			cublasStatus = cublasDgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], alpha, dev_UtAUs_Val_Dense[l], dims[l], P, 1, &one, AP, 1);
 		}
 
 		Diag_Update(l, AP, alpha, P);
 #endif
 	}
 
-	void performJacobiIteration(int l, int max_iter,float tol)
+	void performJacobiIteration(int l, int max_iter,double tol)
 	{
 		cudaError_t cudaErr;
 		cublasStatus_t cublasStatus;
-		float *R = dev_R[l];
-		float *P = dev_P[l];
-		float *deltaX = dev_deltaX[l];
+		double *R = dev_R[l];
+		double *P = dev_P[l];
+		double *deltaX = dev_deltaX[l];
 		for (int k = 0; k < max_iter; k++)
 		{
-			cudaMemset(P, 0, sizeof(float)*dims[l]);
+			cudaMemset(P, 0, sizeof(double)*dims[l]);
 			if (l == layer)
 				Jacobi_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (P, dev_MF_D_Val, dev_MF_Diag_addition, R, dev_MF_D_offset, number);
 			//MF_Diag_Inverse_Kernel << < (number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (P, dev_MF_D_Val, dev_MF_Diag_addition, R, number);
@@ -4377,27 +4377,27 @@ public:
 				//Colored_GS_UtAU_Kernel << <(handles_num[l] + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (P, dev_UtAUs_D_Val[l], dev_UtAUs_Diag_addition[l], R, 0, handles_num[l]);
 				Mogai_Kernel_General << <handles_num[l], 12 >> > (P, dev_UtAUs_D_Val[l], dev_UtAUs_Diag_addition[l], dev_MF_D_offset, R, 0);
 			//UtAUs_Diag_Inverse_Kernel << < (handles_num[l] + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (P, dev_UtAUs_D_Val[l], dev_UtAUs_Diag_addition[l], R, handles_num[l]);
-			cublasStatus = cublasSaxpy(cublasHandle, dims[l], relaxation, P, 1, deltaX, 1);
+			cublasStatus = cublasDaxpy(cublasHandle, dims[l], relaxation, P, 1, deltaX, 1);
 			calculateAP(l, R, &minus_one, P);
 		}
 	}
 
-	void performCGIteration(int l, int max_iter, float tol)
+	void performCGIteration(int l, int max_iter, double tol)
 	{
 		cudaError_t cudaErr;
 		cusparseStatus_t cuspErr;
 		cublasStatus_t cublasStatus;
-		float r0, r1;
-		float alpha, beta, neg_alpha;
-		float dot;
+		double r0, r1;
+		double alpha, beta, neg_alpha;
+		double dot;
 		int k;
-		float *P = dev_P[l];
-		float *R = dev_R[l];
-		float *AP = dev_AP[l];
-		float *deltaX = dev_deltaX[l];
-		cublasStatus = cublasSdot(cublasHandle, dims[l], R, 1, R, 1, &r1);
+		double *P = dev_P[l];
+		double *R = dev_R[l];
+		double *AP = dev_AP[l];
+		double *deltaX = dev_deltaX[l];
+		cublasStatus = cublasDdot(cublasHandle, dims[l], R, 1, R, 1, &r1);
 		if (r1 < EPSILON) return;
-		float r = r1;
+		double r = r1;
 
 		k = 1;
 		while (r1 > tol*r && (max_iter < 0 || k <= max_iter))
@@ -4405,59 +4405,59 @@ public:
 			if (k > 1)
 			{
 				beta = r1 / r0;
-				cublasStatus = cublasSscal(cublasHandle, dims[l], &beta, P, 1);
-				cublasStatus = cublasSaxpy(cublasHandle, dims[l], &one, R, 1, P, 1);
+				cublasStatus = cublasDscal(cublasHandle, dims[l], &beta, P, 1);
+				cublasStatus = cublasDaxpy(cublasHandle, dims[l], &one, R, 1, P, 1);
 			}
 			else
 			{
-				cublasStatus = cublasScopy(cublasHandle, dims[l], R, 1, P, 1);
+				cublasStatus = cublasDcopy(cublasHandle, dims[l], R, 1, P, 1);
 			}
 			//if (l == layer)
-			//	cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l], dims[l], MF_nnz, &one, descr, dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, P, &zero, AP);
+			//	cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l], dims[l], MF_nnz, &one, descr, dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, P, &zero, AP);
 			//else
 			//{
-			//	cublasStatus = cublasSgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], &one, dev_UtAUs_Val_Dense[l], dims[l], P, 1, &zero, AP, 1);
+			//	cublasStatus = cublasDgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], &one, dev_UtAUs_Val_Dense[l], dims[l], P, 1, &zero, AP, 1);
 			//}
 
 			//Diag_Update(l, AP, &one, P);
-			cudaErr = cudaMemset(AP, 0, sizeof(float)*dims[l]); // this should be set by once
+			cudaErr = cudaMemset(AP, 0, sizeof(double)*dims[l]); // this should be set by once
 			calculateAP(l, AP, &one, P);
 
-			cublasStatus = cublasSdot(cublasHandle, dims[l], P, 1, AP, 1, &dot);
+			cublasStatus = cublasDdot(cublasHandle, dims[l], P, 1, AP, 1, &dot);
 			alpha = r1 / dot;
 
 			if (dot < CG_EPSILON)
 				break;
 
-			cublasStatus = cublasSaxpy(cublasHandle, dims[l], &alpha, P, 1, deltaX, 1);
+			cublasStatus = cublasDaxpy(cublasHandle, dims[l], &alpha, P, 1, deltaX, 1);
 			neg_alpha = -alpha;
-			cublasStatus = cublasSaxpy(cublasHandle, dims[l], &neg_alpha, AP, 1, R, 1);
+			cublasStatus = cublasDaxpy(cublasHandle, dims[l], &neg_alpha, AP, 1, R, 1);
 
 			r0 = r1;
-			cublasStatus = cublasSdot(cublasHandle, dims[l], R, 1, R, 1, &r1);
+			cublasStatus = cublasDdot(cublasHandle, dims[l], R, 1, R, 1, &r1);
 			//cudaDeviceSynchronize();
 			//printf("iteration = %3d, residual = %e\n", k, sqrt(r1));
 			k++;
 		}
 	}
 
-	void performPCGIteration(int l, int max_iter, float tol)
+	void performPCGIteration(int l, int max_iter, double tol)
 	{
 		cudaError_t cudaErr;
 		cusparseStatus_t cuspErr;
 		cublasStatus_t cublasStatus;
-		float r0, r1;
-		float alpha, beta, neg_alpha;
-		float dot;
+		double r0, r1;
+		double alpha, beta, neg_alpha;
+		double dot;
 		int k;
-		float *P = dev_P[l];
-		float *R = dev_R[l];
-		float *AP = dev_AP[l];
-		float *Z = dev_Z[l];
-		float *deltaX = dev_deltaX[l];
+		double *P = dev_P[l];
+		double *R = dev_R[l];
+		double *AP = dev_AP[l];
+		double *Z = dev_Z[l];
+		double *deltaX = dev_deltaX[l];
 
 		// Z=C\R
-		cudaMemset(Z, 0, sizeof(float)*dims[l]);
+		cudaMemset(Z, 0, sizeof(double)*dims[l]);
 		if (l == layer)
 			Colored_GS_MF_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Z, dev_MF_D_Val, dev_MF_Diag_addition, R, 0, number);
 		//MF_Diag_Inverse_Kernel << < (number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (P, dev_MF_D_Val, dev_MF_Diag_addition, R, number);
@@ -4465,9 +4465,9 @@ public:
 			//Colored_GS_UtAU_Kernel << <(handles_num[l] + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (P, dev_UtAUs_D_Val[l], dev_UtAUs_Diag_addition[l], R, 0, handles_num[l]);
 			Mogai_Kernel << <handles_num[l], 12 >> > (Z, dev_UtAUs_D_Val[l], dev_UtAUs_Diag_addition[l], R, 0);
 
-		cublasStatus = cublasSdot(cublasHandle, dims[l], Z, 1, R, 1, &r1);
+		cublasStatus = cublasDdot(cublasHandle, dims[l], Z, 1, R, 1, &r1);
 		if (r1 < EPSILON) return;
-		float r = r1;
+		double r = r1;
 
 		k = 1;
 		while (r1 > tol*r && (max_iter < 0 || k <= max_iter))
@@ -4475,38 +4475,38 @@ public:
 			if (k > 1)
 			{
 				beta = r1 / r0;
-				cublasStatus = cublasSscal(cublasHandle, dims[l], &beta, P, 1);
-				cublasStatus = cublasSaxpy(cublasHandle, dims[l], &one, Z, 1, P, 1);
+				cublasStatus = cublasDscal(cublasHandle, dims[l], &beta, P, 1);
+				cublasStatus = cublasDaxpy(cublasHandle, dims[l], &one, Z, 1, P, 1);
 			}
 			else
 			{
-				cublasStatus = cublasScopy(cublasHandle, dims[l], Z, 1, P, 1);
+				cublasStatus = cublasDcopy(cublasHandle, dims[l], Z, 1, P, 1);
 			}
 			//if (l == layer)
-			//	cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l], dims[l], MF_nnz, &one, descr, dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, P, &zero, AP);
+			//	cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l], dims[l], MF_nnz, &one, descr, dev_MF_Val, dev_MF_rowPtr, dev_MF_colInd, P, &zero, AP);
 			//else
 			//{
-			//	cublasStatus = cublasSgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], &one, dev_UtAUs_Val_Dense[l], dims[l], P, 1, &zero, AP, 1);
+			//	cublasStatus = cublasDgemv(cublasHandle, CUBLAS_OP_N, dims[l], dims[l], &one, dev_UtAUs_Val_Dense[l], dims[l], P, 1, &zero, AP, 1);
 			//}
 
 			//Diag_Update(l, AP, &one, P);
-			cudaErr = cudaMemset(AP, 0, sizeof(float)*dims[l]); // this should be set by once
+			cudaErr = cudaMemset(AP, 0, sizeof(double)*dims[l]); // this should be set by once
 			calculateAP(l, AP, &one, P);
 
-			cublasStatus = cublasSdot(cublasHandle, dims[l], P, 1, AP, 1, &dot);
+			cublasStatus = cublasDdot(cublasHandle, dims[l], P, 1, AP, 1, &dot);
 			alpha = r1 / dot;
 
 			if (dot < CG_EPSILON)
 				break;
 
-			cublasStatus = cublasSaxpy(cublasHandle, dims[l], &alpha, P, 1, deltaX, 1);
+			cublasStatus = cublasDaxpy(cublasHandle, dims[l], &alpha, P, 1, deltaX, 1);
 			neg_alpha = -alpha;
-			cublasStatus = cublasSaxpy(cublasHandle, dims[l], &neg_alpha, AP, 1, R, 1);
+			cublasStatus = cublasDaxpy(cublasHandle, dims[l], &neg_alpha, AP, 1, R, 1);
 
 			r0 = r1;
 
 			// Z=C\R
-			cudaMemset(Z, 0, sizeof(float)*dims[l]);
+			cudaMemset(Z, 0, sizeof(double)*dims[l]);
 			if (l == layer)
 				Colored_GS_MF_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Z, dev_MF_D_Val, dev_MF_Diag_addition, R, 0, number);
 			//MF_Diag_Inverse_Kernel << < (number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (P, dev_MF_D_Val, dev_MF_Diag_addition, R, number);
@@ -4514,19 +4514,19 @@ public:
 				//Colored_GS_UtAU_Kernel << <(handles_num[l] + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (P, dev_UtAUs_D_Val[l], dev_UtAUs_Diag_addition[l], R, 0, handles_num[l]);
 				Mogai_Kernel << <handles_num[l], 12 >> > (Z, dev_UtAUs_D_Val[l], dev_UtAUs_Diag_addition[l], R, 0);
 
-			cublasStatus = cublasSdot(cublasHandle, dims[l], Z, 1, R, 1, &r1);
+			cublasStatus = cublasDdot(cublasHandle, dims[l], Z, 1, R, 1, &r1);
 			//cudaDeviceSynchronize();
 			//printf("iteration = %3d, residual = %e\n", k, sqrt(r1));
 			k++;
 		}
 	}
 
-	void performGaussSeidelIteration(int l, int max_iter, float tol)
+	void performGaussSeidelIteration(int l, int max_iter, double tol)
 	{
 		cudaError_t cudaErr;
 		cusparseStatus_t cuspErr;
 		cublasStatus_t cublasErr;
-		float r1;
+		double r1;
 		if (!stored_as_LDU[l] && !stored_as_dense[l])
 		{
 			printf("only support saved as LDU or saved as dense.\n");
@@ -4537,17 +4537,17 @@ public:
 			//printf("this method is not supposed to run on finest level only.\n");
 			//return;
 
-			float *P = dev_P[l];
-			float *R = dev_R[l];
-			float *B = dev_B[l];
-			float *deltaX = dev_deltaX[l];
+			double *P = dev_P[l];
+			double *R = dev_R[l];
+			double *B = dev_B[l];
+			double *deltaX = dev_deltaX[l];
 			for (int k = 0; k < max_iter; k++)
 			{
-				cublasErr = cublasScopy(cublasHandle, dims[l], B, 1, dev_temp_X[l], 1);
-				cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_L_nnz, &minus_one, descr, \
+				cublasErr = cublasDcopy(cublasHandle, dims[l], B, 1, dev_temp_X[l], 1);
+				cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_L_nnz, &minus_one, descr, \
 					dev_MF_L_Val, dev_MF_L_rowPtr, dev_MF_L_colInd, 3, deltaX, &one, dev_temp_X[l]);
 
-				cudaErr = cudaMemset(deltaX, 0, sizeof(float)*dims[l]);
+				cudaErr = cudaMemset(deltaX, 0, sizeof(double)*dims[l]);
 
 				for (int c = colors_num[l] - 1; c >= 0; c--)
 				{
@@ -4556,18 +4556,18 @@ public:
 						(deltaX, dev_MF_D_Val, dev_MF_Diag_addition, dev_temp_X[l], base, color_vertices_num[l][c + 1] - base);
 					if (c)
 					{
-						cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, color_vertices_num[l][c] - color_vertices_num[l][c - 1], \
+						cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, color_vertices_num[l][c] - color_vertices_num[l][c - 1], \
 							color_vertices_num[l][colors_num[l]] - color_vertices_num[l][c], MF_GS_U_Ptr[c] - MF_GS_U_Ptr[c - 1], &minus_one, descr, \
 							dev_MF_U_Val + MF_GS_U_Ptr[c - 1] * 9, dev_MF_GS_U_rowPtr + color_vertices_num[l][c - 1] + c - 1, dev_MF_GS_U_colInd + MF_GS_U_Ptr[c - 1], \
 							3, deltaX + 3 * base, &one, dev_temp_X[l] + 3 * color_vertices_num[l][c - 1]);
 					}
 				}
 
-				cublasErr = cublasScopy(cublasHandle, dims[l], B, 1, dev_temp_X[l], 1);
-				cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_U_nnz, &minus_one, descr, \
+				cublasErr = cublasDcopy(cublasHandle, dims[l], B, 1, dev_temp_X[l], 1);
+				cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, number, number, MF_U_nnz, &minus_one, descr, \
 					dev_MF_U_Val, dev_MF_U_rowPtr, dev_MF_U_colInd, 3, deltaX, &one, dev_temp_X[l]);
 
-				cudaErr = cudaMemset(deltaX, 0, sizeof(float)*dims[l]);
+				cudaErr = cudaMemset(deltaX, 0, sizeof(double)*dims[l]);
 
 				for (int c = 0; c < colors_num[l]; c++)
 				{
@@ -4576,33 +4576,33 @@ public:
 						(deltaX, dev_MF_D_Val, dev_MF_Diag_addition, dev_temp_X[l], base, color_vertices_num[l][c + 1] - base);
 					if (c < colors_num[l] - 1)
 					{
-						cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, \
+						cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, \
 							color_vertices_num[l][c + 2] - color_vertices_num[l][c + 1], color_vertices_num[l][c + 1], MF_GS_L_Ptr[c + 1] - MF_GS_L_Ptr[c], \
 							&minus_one, descr, dev_MF_L_Val + MF_GS_L_Ptr[c] * 9, dev_MF_GS_L_rowPtr + color_vertices_num[l][c + 1] - color_vertices_num[l][1] + c, \
 							dev_MF_GS_L_colInd + MF_GS_L_Ptr[c], 3, deltaX, &one, dev_temp_X[l] + 3 * color_vertices_num[l][c + 1]);
 					}
 				}
 			}
-			cublasScopy(cublasHandle, dims[l], B, 1, R, 1);
-			cublasSscal(cublasHandle, dims[l], relaxation, deltaX, 1);
+			cublasDcopy(cublasHandle, dims[l], B, 1, R, 1);
+			cublasDscal(cublasHandle, dims[l], relaxation, deltaX, 1);
 			calculateAP(l, R, &minus_one, deltaX);
-			//float norm = 0;
-			//cublasSdot(cublasHandle, dims[l], R, 1, R, 1, &norm);
+			//double norm = 0;
+			//cublasDdot(cublasHandle, dims[l], R, 1, R, 1, &norm);
 			//printf("%f\n", norm);
 		}
 		else
 		{
-			float *P = dev_P[l];
-			float *R = dev_R[l];
-			float *B = dev_B[l];
-			float *deltaX = dev_deltaX[l];
+			double *P = dev_P[l];
+			double *R = dev_R[l];
+			double *B = dev_B[l];
+			double *deltaX = dev_deltaX[l];
 
 			if(stored_as_dense[l])
 			{
 				for (int k = 0; k < max_iter; k++)
 				{
-					cudaErr = cudaMemset(P, 0, sizeof(float)*dims[l]);
-					cudaMemcpy(dev_temp_X[l], R, sizeof(float)*dims[l], cudaMemcpyDeviceToDevice);
+					cudaErr = cudaMemset(P, 0, sizeof(double)*dims[l]);
+					cudaMemcpy(dev_temp_X[l], R, sizeof(double)*dims[l], cudaMemcpyDeviceToDevice);
 
 					for (int c = colors_num[l] - 1; c >= 0; c--)
 					{
@@ -4616,19 +4616,19 @@ public:
 									(deltaX, dev_UtAUs_D_Val[l], dev_temp_X[l], base, color_vertices_num[l][c + 1] - base);
 
 						if (c)
-							cublasErr = cublasSgemv(cublasHandle, CUBLAS_OP_N, 12 * (color_vertices_num[l][c] - color_vertices_num[l][c - 1]), \
+							cublasErr = cublasDgemv(cublasHandle, CUBLAS_OP_N, 12 * (color_vertices_num[l][c] - color_vertices_num[l][c - 1]), \
 								12 * (color_vertices_num[l][colors_num[l]] - color_vertices_num[l][c]), &minus_one, \
 								dev_UtAUs_Val[l] + dims[l] * 12 * color_vertices_num[l][c] + 12 * color_vertices_num[l][c - 1], dims[l], \
 								P + 12 * base, 1, &one, dev_temp_X[l] + 12 * color_vertices_num[l][c - 1], 1);
 
 					}
 
-					cublasSaxpy(cublasHandle, dims[l], &one, P, 1, deltaX, 1);
+					cublasDaxpy(cublasHandle, dims[l], &one, P, 1, deltaX, 1);
 					calculateAP(l, R, &minus_one, P);
 
 
-					cudaErr = cudaMemset(P, 0, sizeof(float)*dims[l]);
-					cudaMemcpy(dev_temp_X[l], R, sizeof(float)*dims[l], cudaMemcpyDeviceToDevice);
+					cudaErr = cudaMemset(P, 0, sizeof(double)*dims[l]);
+					cudaMemcpy(dev_temp_X[l], R, sizeof(double)*dims[l], cudaMemcpyDeviceToDevice);
 
 					for (int c = 0; c < colors_num[l]; c++)
 					{
@@ -4642,7 +4642,7 @@ public:
 									(deltaX, dev_UtAUs_D_Val[l], dev_temp_X[l], base, color_vertices_num[l][c + 1] - base);
 
 						if (c < colors_num[l] - 1)
-							cublasErr = cublasSgemv(cublasHandle, CUBLAS_OP_N, 12 * (color_vertices_num[l][c + 2] - color_vertices_num[l][c + 1]), \
+							cublasErr = cublasDgemv(cublasHandle, CUBLAS_OP_N, 12 * (color_vertices_num[l][c + 2] - color_vertices_num[l][c + 1]), \
 								12 * (color_vertices_num[l][c + 1]), &minus_one, \
 								dev_UtAUs_Val[l] + 12 * color_vertices_num[l][c + 1], dims[l], \
 								P, 1, &one, dev_temp_X[l] + 12 * color_vertices_num[l][c + 1], 1);
@@ -4650,7 +4650,7 @@ public:
 
 					}
 
-					cublasSaxpy(cublasHandle, dims[l], &one, P, 1, deltaX, 1);
+					cublasDaxpy(cublasHandle, dims[l], &one, P, 1, deltaX, 1);
 					calculateAP(l, R, &minus_one, P);
 				}
 			}
@@ -4660,12 +4660,12 @@ public:
 				{
 
 
-					cublasErr = cublasScopy(cublasHandle, dims[l], B, 1, dev_temp_X[l], 1);
-					cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], \
+					cublasErr = cublasDcopy(cublasHandle, dims[l], B, 1, dev_temp_X[l], 1);
+					cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], \
 						UtAUs_L_nnz[l], &minus_one, descr, dev_UtAUs_L_Val[l], dev_UtAUs_L_rowPtr[l], dev_UtAUs_L_colInd[l], 12, deltaX, &one, dev_temp_X[l]);
 
 
-					cudaErr = cudaMemset(deltaX, 0, sizeof(float)*dims[l]);
+					cudaErr = cudaMemset(deltaX, 0, sizeof(double)*dims[l]);
 					for (int c = colors_num[l] - 1; c >= 0; c--)
 					{
 						int base = color_vertices_num[l][c];
@@ -4679,7 +4679,7 @@ public:
 
 
 						if (c)
-							cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, color_vertices_num[l][c] - color_vertices_num[l][c - 1], \
+							cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, color_vertices_num[l][c] - color_vertices_num[l][c - 1], \
 								color_vertices_num[l][colors_num[l]] - color_vertices_num[l][c], UtAUs_GS_U_Ptr[l][c] - UtAUs_GS_U_Ptr[l][c - 1], &minus_one, descr, \
 								dev_UtAUs_U_Val[l] + 144 * UtAUs_GS_U_Ptr[l][c - 1], dev_UtAUs_GS_U_rowPtr[l] + color_vertices_num[l][c - 1] + c - 1, dev_UtAUs_GS_U_colInd[l] + UtAUs_GS_U_Ptr[l][c - 1], \
 								12, deltaX + 12 * base, &one, dev_temp_X[l] + 12 * color_vertices_num[l][c - 1]);
@@ -4689,12 +4689,12 @@ public:
 
 
 
-					cublasErr = cublasScopy(cublasHandle, dims[l], B, 1, dev_temp_X[l], 1);
-					cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], \
+					cublasErr = cublasDcopy(cublasHandle, dims[l], B, 1, dev_temp_X[l], 1);
+					cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, handles_num[l], handles_num[l], \
 						UtAUs_U_nnz[l], &minus_one, descr, dev_UtAUs_U_Val[l], dev_UtAUs_U_rowPtr[l], dev_UtAUs_U_colInd[l], 12, deltaX, &one, dev_temp_X[l]);
 
 
-					cudaErr = cudaMemset(deltaX, 0, sizeof(float)*dims[l]);
+					cudaErr = cudaMemset(deltaX, 0, sizeof(double)*dims[l]);
 					for (int c = 0; c < colors_num[l]; c++)
 					{
 						int base = color_vertices_num[l][c];
@@ -4705,7 +4705,7 @@ public:
 						//Mogai_2_Kernel << <(color_vertices_num[l][c + 1] - base + 1) / 2, 24 >> > \
 								(deltaX, dev_UtAUs_D_Val[l], dev_temp_X[l], base, color_vertices_num[l][c + 1] - base);
 						if (c < colors_num[l] - 1)
-							cuspErr = cusparseSbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, color_vertices_num[l][c + 2] - color_vertices_num[l][c + 1], \
+							cuspErr = cusparseDbsrmv(cusparseHandle, CUSPARSE_DIRECTION_ROW, CUSPARSE_OPERATION_NON_TRANSPOSE, color_vertices_num[l][c + 2] - color_vertices_num[l][c + 1], \
 								color_vertices_num[l][c + 1], UtAUs_GS_L_Ptr[l][c + 1] - UtAUs_GS_L_Ptr[l][c], &minus_one, descr, \
 								dev_UtAUs_L_Val[l] + 144 * UtAUs_GS_L_Ptr[l][c], dev_UtAUs_GS_L_rowPtr[l] + color_vertices_num[l][c + 1] - color_vertices_num[l][1] + c, \
 								dev_UtAUs_GS_L_colInd[l] + UtAUs_GS_L_Ptr[l][c], 12, deltaX, &one, dev_temp_X[l] + 12 * color_vertices_num[l][c + 1]);
@@ -4713,34 +4713,34 @@ public:
 
 					}
 				}
-				cublasScopy(cublasHandle, dims[l], B, 1, R, 1);
-				cublasSscal(cublasHandle, dims[l], relaxation, deltaX, 1);
+				cublasDcopy(cublasHandle, dims[l], B, 1, R, 1);
+				cublasDscal(cublasHandle, dims[l], relaxation, deltaX, 1);
 				calculateAP(l, R, &minus_one, deltaX);
 			}
 		}
 	}
 
-//	void performGaussSeidelIteration(int l, int max_iter, float tol)
+//	void performGaussSeidelIteration(int l, int max_iter, double tol)
 //	{
 //		cudaError_t cudaErr;
 //		cusparseStatus_t cuspErr;
 //		cublasStatus_t cublasErr;
-//		float r1;
+//		double r1;
 //		if (l == layer)
 //		{
 //			//printf("this method is not supposed to run on finest level only.\n");
 //			//return;
 //			for (int dim = 0; dim < 3; dim++)
 //			{
-//				float *P = &(dev_P[l][dims[l] * dim]);
-//				float *R = &(dev_R[l][dims[l] * dim]);
-//				float *deltaX = &(dev_deltaX[l][dims[l] * dim]);
+//				double *P = &(dev_P[l][dims[l] * dim]);
+//				double *R = &(dev_R[l][dims[l] * dim]);
+//				double *deltaX = &(dev_deltaX[l][dims[l] * dim]);
 //				for (int k = 0; k < max_iter; k++)
 //				{
 //					//cuspErr = cusparseScsrsv_solve(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, number, &one, descrU, \
 //					//	dev_MF_U_Val, dev_MF_U_rowPtr, dev_MF_U_colInd, infoU, R, P);
 //
-//					cublasErr = cublasScopy(cublasHandle, dims[l], R, 1, dev_temp_X[l], 1);
+//					cublasErr = cublasDcopy(cublasHandle, dims[l], R, 1, dev_temp_X[l], 1);
 //					for (int c = colors_num[l] - 1; c >= 0; c--)
 //					{
 //						int base = color_vertices_num[l][c];
@@ -4748,18 +4748,18 @@ public:
 //						cudaErr = cudaGetLastError();
 //						if (c)
 //						{
-//							cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, color_vertices_num[l][c] - color_vertices_num[l][c - 1], \
+//							cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, color_vertices_num[l][c] - color_vertices_num[l][c - 1], \
 //								color_vertices_num[l][colors_num[l]] - color_vertices_num[l][c], MF_GS_U_Ptr[c] - MF_GS_U_Ptr[c-1], &minus_one, descr, \
 //								dev_MF_GS_U_Val + MF_GS_U_Ptr[c - 1], dev_MF_GS_U_rowPtr + color_vertices_num[l][c - 1] + c - 1, dev_MF_GS_U_colInd + MF_GS_U_Ptr[c - 1], \
 //								P + base, &one, dev_temp_X[l] + color_vertices_num[l][c - 1]);
 //						}
 //						
 //					}
-//					cublasErr = cublasSaxpy(cublasHandle, dims[l], &one, P, 1, deltaX, 1);
+//					cublasErr = cublasDaxpy(cublasHandle, dims[l], &one, P, 1, deltaX, 1);
 //					calculateAP(l, R, &minus_one, P);
 //				}
 //#ifdef Test
-//				cublasErr = cublasSdot(cublasHandle, dims[l], R, 1, R, 1, &r1);
+//				cublasErr = cublasDdot(cublasHandle, dims[l], R, 1, R, 1, &r1);
 //				printf("%d: %f\n", dim, r1);
 //#endif
 //			}
@@ -4771,13 +4771,13 @@ public:
 //		{
 //			for (int dim = 0; dim < 3; dim++)
 //			{
-//				float *P = &(dev_P[l][dims[l] * dim]);
-//				float *R = &(dev_R[l][dims[l] * dim]);
-//				float *deltaX = &(dev_deltaX[l][dims[l] * dim]);
+//				double *P = &(dev_P[l][dims[l] * dim]);
+//				double *R = &(dev_R[l][dims[l] * dim]);
+//				double *deltaX = &(dev_deltaX[l][dims[l] * dim]);
 //				for (int k = 0; k < max_iter; k++)
 //				{
-//					cublasErr = cublasScopy(cublasHandle, dims[l], R, 1, dev_temp_X[l], 1);
-//					cudaErr = cudaMemset(P, 0, sizeof(float)*dims[l]);
+//					cublasErr = cublasDcopy(cublasHandle, dims[l], R, 1, dev_temp_X[l], 1);
+//					cudaErr = cudaMemset(P, 0, sizeof(double)*dims[l]);
 //					for (int c = colors_num[l] - 1; c >= 0; c--)
 //					{
 //						int base = color_vertices_num[l][c];
@@ -4786,23 +4786,23 @@ public:
 //						if (c)
 //						{
 //							if (stored_as_dense[l])
-//								cublasErr = cublasSgemv(cublasHandle, CUBLAS_OP_N, 4 * (color_vertices_num[l][c] - color_vertices_num[l][c - 1]), \
+//								cublasErr = cublasDgemv(cublasHandle, CUBLAS_OP_N, 4 * (color_vertices_num[l][c] - color_vertices_num[l][c - 1]), \
 //									4 * (color_vertices_num[l][colors_num[l]] - color_vertices_num[l][c]), &minus_one, \
 //									dev_UtAUs_Val_Dense[l] + dims[l] * 4 * color_vertices_num[l][c] + 4 * color_vertices_num[l][c - 1], dims[l], \
 //									P + 4 * base, 1, &one, dev_temp_X[l] + 4 * color_vertices_num[l][c - 1], 1);
 //							else
-//								cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, 4 * (color_vertices_num[l][c] - color_vertices_num[l][c - 1]), \
+//								cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, 4 * (color_vertices_num[l][c] - color_vertices_num[l][c - 1]), \
 //									4 * (color_vertices_num[l][colors_num[l]] - color_vertices_num[l][c]), UtAUs_GS_U_Ptr[l][c] - UtAUs_GS_U_Ptr[l][c - 1], &minus_one, descr, \
 //									dev_UtAUs_GS_U_Val[l] + 4 * UtAUs_GS_U_Ptr[l][c - 1], dev_UtAUs_GS_U_rowPtr[l] + 4 * color_vertices_num[l][c - 1] + c - 1, dev_UtAUs_GS_U_colInd[l] + UtAUs_GS_U_Ptr[l][c - 1], \
 //									P + 4 * base, &one, dev_temp_X[l] + 4 * color_vertices_num[l][c - 1]);
 //						}
 //
 //					}
-//					cublasErr = cublasSaxpy(cublasHandle, dims[l], &one, P, 1, deltaX, 1);
+//					cublasErr = cublasDaxpy(cublasHandle, dims[l], &one, P, 1, deltaX, 1);
 //					calculateAP(l, R, &minus_one, P);
 //				}
 //#ifdef Test
-//				cublasErr = cublasSdot(cublasHandle, dims[l], R, 1, R, 1, &r1);
+//				cublasErr = cublasDdot(cublasHandle, dims[l], R, 1, R, 1, &r1);
 //				printf("%d: %f\n", dims, r1);
 //#endif
 //			}
@@ -4823,17 +4823,17 @@ public:
 		cusparseStatus_t cuspErr;
 		cublasStatus_t cublasStatus;
 
-		//float *temp = new float[dims[layer]];
-		//cudaMemcpy(temp, dev_R[layer], sizeof(float)*dims[layer], cudaMemcpyDeviceToHost);
+		//double *temp = new double[dims[layer]];
+		//cudaMemcpy(temp, dev_R[layer], sizeof(double)*dims[layer], cudaMemcpyDeviceToHost);
 		//outputVector<TYPE>("benchmark\\down.txt", dims[layer], temp);
 		//delete temp;
 
-		cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l - 1], dims[l], \
+		cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l - 1], dims[l], \
 			Us_nnz[l - 1], &one, descr, dev_Uts_Val[l - 1], dev_Uts_rowPtr[l - 1], dev_Uts_colInd[l - 1], dev_R[l], &zero, dev_B[l - 1]);
 
-		cublasScopy(cublasHandle, dims[l - 1], dev_B[l - 1], 1, dev_R[l - 1], 1);
+		cublasDcopy(cublasHandle, dims[l - 1], dev_B[l - 1], 1, dev_R[l - 1], 1);
 
-		cudaErr = cudaMemset(dev_deltaX[l - 1], 0, sizeof(float) * dims[l - 1]);
+		cudaErr = cudaMemset(dev_deltaX[l - 1], 0, sizeof(double) * dims[l - 1]);
 
 		l--;
 	}
@@ -4849,15 +4849,15 @@ public:
 		cusparseStatus_t cuspErr;
 		cublasStatus_t cublasStatus;
 
-		cuspErr = cusparseScsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l + 1], dims[l], \
+		cuspErr = cusparseDcsrmv(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, dims[l + 1], dims[l], \
 			Us_nnz[l], &one, descr, dev_Us_Val[l], dev_Us_rowPtr[l], dev_Us_colInd[l], dev_deltaX[l], &zero, dev_temp_X[l + 1]);
 
-		cublasStatus = cublasSaxpy(cublasHandle, dims[l + 1], &one, dev_temp_X[l + 1], 1, dev_deltaX[l + 1], 1);
+		cublasStatus = cublasDaxpy(cublasHandle, dims[l + 1], &one, dev_temp_X[l + 1], 1, dev_deltaX[l + 1], 1);
 
 		calculateAP(l + 1, dev_R[l + 1], &minus_one, dev_temp_X[l + 1]);
 
-		//float *temp = new float[dims[layer]];
-		//cudaMemcpy(temp, dev_R[layer], sizeof(float)*dims[layer], cudaMemcpyDeviceToHost);
+		//double *temp = new double[dims[layer]];
+		//cudaMemcpy(temp, dev_R[layer], sizeof(double)*dims[layer], cudaMemcpyDeviceToHost);
 		//outputVector<TYPE>("benchmark\\up.txt", dims[layer], temp);
 		//delete temp;
 
@@ -4868,15 +4868,15 @@ public:
 	{
 		if (l == layer && !use_Hessian)
 		{
-			float *temp = new float[3 * number];
-			cudaMemcpy(temp, dev_B[l], sizeof(float) * 3 * number, cudaMemcpyDeviceToHost);
+			double *temp = new double[3 * number];
+			cudaMemcpy(temp, dev_B[l], sizeof(double) * 3 * number, cudaMemcpyDeviceToHost);
 			for (int i = 0; i < 3 * number; i++)
 				PD_B[i] = temp[MF_PD_reorder[i]];
-			cusolverSpScsrluSolveHost(cusolverSpHandle, 3 * number, PD_B, PD_X, MF_PD_info, MF_PD_buffer);
+			cusolverSpDcsrluSolveHost(cusolverSpHandle, 3 * number, PD_B, PD_X, MF_PD_info, MF_PD_buffer);
 			for (int i = 0; i < 3 * number; i++)
 				temp[MF_PD_reorder[i]] = PD_X[i];
-			cudaMemcpy(dev_deltaX[l], temp, sizeof(float) * 3 * number, cudaMemcpyHostToDevice);
-			//cudaMemcpy(dev_deltaX[l], dev_B[l], sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
+			cudaMemcpy(dev_deltaX[l], temp, sizeof(double) * 3 * number, cudaMemcpyHostToDevice);
+			//cudaMemcpy(dev_deltaX[l], dev_B[l], sizeof(double) * 3 * number, cudaMemcpyDeviceToDevice);
 			//cusolverRfSolve(cusolverRfHandle, dev_MF_PD_P, dev_MF_PD_Q, 1, dev_temp_X[l], 3 * number, dev_deltaX, 3 * number);
 		}
 		else
@@ -4885,7 +4885,7 @@ public:
 				Direct_Reorder_Kernel << <(3 * number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > \
 					(dev_temp_X[l], dev_B[l], dev_MF_PD_reorder, 3 * number);
 				int singularity;
-				checkCudaErrors(cusolverSpScsrlsvchol(
+				checkCudaErrors(cusolverSpDcsrlsvchol(
 					cusolverSpHandle, 3 * number, MF_PD_nnz,
 					descr, dev_MF_PD_reordered_Val, dev_MF_PD_reordered_rowPtr, dev_MF_PD_reordered_colInd,
 					dev_temp_X[l], 1e-12, 0, dev_Z[l], &singularity));
@@ -4895,15 +4895,15 @@ public:
 			}
 			else if (l == 0 && layer != 0)
 			{
-				cudaMemcpy(dev_deltaX[l], dev_B[l], sizeof(float)*dims[l], cudaMemcpyDeviceToDevice);
-				cusolverDnSpotrs(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], 1, dev_UtAUs_chol, dims[l], dev_deltaX[l], dims[l], dev_chol_info);
+				cudaMemcpy(dev_deltaX[l], dev_B[l], sizeof(double)*dims[l], cudaMemcpyDeviceToDevice);
+				cusolverDnDpotrs(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], 1, dev_UtAUs_chol, dims[l], dev_deltaX[l], dims[l], dev_chol_info);
 				calculateAP(l, dev_R[l], &minus_one, dev_deltaX[l]);
 			}
 	}
 
 	void computeGradient(TYPE t)
 	{
-		cudaMemset(dev_B[layer], 0, sizeof(float) * dims[layer]);
+		cudaMemset(dev_B[layer], 0, sizeof(double) * dims[layer]);
 
 		Energy_Gradient_Kernel << <(3 * number + threadsPerBlock) / threadsPerBlock/*blocksPerGrid*/, threadsPerBlock >> > (dev_B[layer], dev_Tet_Temp, dev_VTT, dev_vtt_num, \
 			dev_fixed, dev_more_fixed, dev_collision_fixed, dev_collision_normal, dev_fixed_X, dev_X, \
@@ -4911,32 +4911,32 @@ public:
 		Inertia_Gradient_Kernel << < (3 * number + threadsPerBlock) / threadsPerBlock/*blocksPerGrid*/, threadsPerBlock >> > (dev_B[layer], dev_inertia_X, dev_X, dev_vertex2index[layer], dev_M, 1.0 / t, number);
 	}
 
-	void computeEnergy(float *E, const float *X, TYPE t)
+	void computeEnergy(double *E, const double *X, TYPE t)
 	{
-		float e = 0;
+		double e = 0;
 
 		//Energy_Kernel_1 << <(tet_number+ tet_threadsPerBlock-1)/ tet_threadsPerBlock, tet_threadsPerBlock >> > (X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Energy_Temp, elasticity, tet_number);
-		//cublasSdot(cublasHandle, 9 * tet_number, dev_Energy_Temp, 1, dev_Energy_Temp, 1, &e);
+		//cublasDdot(cublasHandle, 9 * tet_number, dev_Energy_Temp, 1, dev_Energy_Temp, 1, &e);
 
 		Energy_Kernel_StVK_1 << <(tet_number + tet_threadsPerBlock - 1) / tet_threadsPerBlock, tet_threadsPerBlock >> > (X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Energy_Temp, lambda, mu, tet_number);
-		cublasSdot(cublasHandle, 10 * tet_number, dev_Energy_Temp, 1, dev_Energy_Temp, 1, &e);
+		cublasDdot(cublasHandle, 10 * tet_number, dev_Energy_Temp, 1, dev_Energy_Temp, 1, &e);
 
-		cudaMemset(dev_Energy, 0, sizeof(float));
+		cudaMemset(dev_Energy, 0, sizeof(double));
 		Energy_Kernel_2 << <(number + threadsPerBlock) / threadsPerBlock/*blocksPerGrid*/, threadsPerBlock >> > (dev_Energy, X, dev_inertia_X, dev_vertex2index[layer], dev_M, 1.0 / t, dev_fixed, dev_fixed_X, control_mag, number);
 
-		cudaMemcpy(E, dev_Energy, sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(E, dev_Energy, sizeof(double), cudaMemcpyDeviceToHost);
 
 		*E += e;
 	}
 
 	void lineSearch(TYPE t)
 	{
-		float alpha = 0.003, beta = 0.1;
+		double alpha = 0.003, beta = 0.1;
 		const int max_iters = 20;
-		const float ls_epsilon = 1e-6;
+		const double ls_epsilon = 1e-6;
 
-		cudaMemcpy(dev_ls_temp_X, dev_X, sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
-		float E0;
+		cudaMemcpy(dev_ls_temp_X, dev_X, sizeof(double) * 3 * number, cudaMemcpyDeviceToDevice);
+		double E0;
 		computeEnergy(&E0, dev_ls_temp_X, t);
 
 		for (int i = 0; i < max_iters; i++)
@@ -4944,15 +4944,15 @@ public:
 			Update_DeltaX_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> >
 				(dev_X, dev_deltaX[layer], dev_index2vertex[layer], number);
 
-			float E = 0, L = 0;
+			double E = 0, L = 0;
 			computeEnergy(&E, dev_X, t);
-			cublasSdot(cublasHandle, 3 * number, dev_deltaX[layer], 1, dev_newton_gradient, 1, &L);
+			cublasDdot(cublasHandle, 3 * number, dev_deltaX[layer], 1, dev_newton_gradient, 1, &L);
 			E += L * alpha * t;
 
 			if (E < E0 + ls_epsilon) return;
 
-			cudaMemcpy(dev_X, dev_ls_temp_X, sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
-			cublasSscal(cublasHandle, 3 * number, &beta, dev_deltaX[layer], 1);
+			cudaMemcpy(dev_X, dev_ls_temp_X, sizeof(double) * 3 * number, cudaMemcpyDeviceToDevice);
+			cublasDscal(cublasHandle, 3 * number, &beta, dev_deltaX[layer], 1);
 		}
 
 		Update_DeltaX_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> >
@@ -4972,18 +4972,18 @@ public:
 		TIMER timer;
 		TIMER iter_timer;
 
-		float now_time = 0;
-		float omega = 0.666;
+		double now_time = 0;
+		double omega = 0.666;
 
-		float g_norm;
-		float e_norm, E;
+		double g_norm;
+		double e_norm, E;
 
 		// Step 0: Set up Diag data
 		Fixed_Update_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_X, dev_collision_fixed, dev_collision_normal, dev_fixed, dev_more_fixed, dev_fixed_X, number, dir[0], dir[1], dir[2], dev_objects, objects_num);
 
-		cudaErr = cudaMemset(dev_MF_Diag_addition, 0, sizeof(float) * 9 * number);
+		cudaErr = cudaMemset(dev_MF_Diag_addition, 0, sizeof(double) * 9 * number);
 		for (int l = layer - 1; l >= 0; l--)
-			cudaErr = cudaMemset(dev_UtAUs_Diag_addition[l], 0, sizeof(float) * 144 * handles_num[l]);
+			cudaErr = cudaMemset(dev_UtAUs_Diag_addition[l], 0, sizeof(double) * 144 * handles_num[l]);
 		
 
 		if (!use_Hessian)
@@ -4995,26 +4995,26 @@ public:
 				int n = handles_num[l + 1];
 				if (l == layer - 1)
 				{
-					cudaMemcpy(dev_UtAUs_Diag_addition[l], dev_UtAUs_Diag_rank_fix, sizeof(float) * 144 * handles_num[l], cudaMemcpyDeviceToDevice);
+					cudaMemcpy(dev_UtAUs_Diag_addition[l], dev_UtAUs_Diag_rank_fix, sizeof(double) * 144 * handles_num[l], cudaMemcpyDeviceToDevice);
 					UtAUs_Diag_Update_First_Path_Kernel << <(n * 9 + Reduction_threadsPerBlock - 1) / Reduction_threadsPerBlock, Reduction_threadsPerBlock * 16 >> > \
 						(dev_UtAUs_Diag_addition[l], dev_MF_Diag_addition, dev_UtAUs_precomputed_4x4[l], dev_UtAUs_diag_addition_update_offset[l], n * 9);
-					//cudaErr = cudaMemset(dev_UtAUs_Diag_addition[l], 0, sizeof(float) * 144 * handles_num[l]);
+					//cudaErr = cudaMemset(dev_UtAUs_Diag_addition[l], 0, sizeof(double) * 144 * handles_num[l]);
 				}
 				else
 					UtAUs_Diag_Update_Second_Path_Kernel << <(n + UtAUs_threadPerBlock - 1) / UtAUs_threadPerBlock, dim3(144, UtAUs_threadPerBlock) >> > \
 						(dev_UtAUs_Diag_addition[l], dev_UtAUs_Diag_addition[l + 1], dev_UtAUs_diag_addition_update_offset[l], n);
 				if (l == 0 && stored_as_dense[l])
 				{
-					cudaMemcpy(dev_UtAUs_chol, dev_UtAUs_Val[l], sizeof(float)*dims[l] * dims[l], cudaMemcpyDeviceToDevice);
+					cudaMemcpy(dev_UtAUs_chol, dev_UtAUs_Val[l], sizeof(double)*dims[l] * dims[l], cudaMemcpyDeviceToDevice);
 					UtAUs_Diag_Update_Third_Path_Kernel << <(handles_num[l] + UtAUs_threadPerBlock - 1) / UtAUs_threadPerBlock, dim3(144, UtAUs_threadPerBlock) >> > \
 						(dev_UtAUs_chol, dev_UtAUs_Diag_addition[l], handles_num[l], handles_num[l]);
-					cublasSaxpy(cublasHandle, dims[l], &one, dev_chol_fixed, 1, dev_UtAUs_chol, dims[l] + 1);
+					cublasDaxpy(cublasHandle, dims[l], &one, dev_chol_fixed, 1, dev_UtAUs_chol, dims[l] + 1);
 
 					//int res = 0;
-					//cudaMemset(dev_chol_info, 0, sizeof(float));
-					checkCudaErrors(cusolverDnSpotrf(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_chol, dims[l], dev_chol_buffer, chol_bufferSize, dev_chol_info));
+					//cudaMemset(dev_chol_info, 0, sizeof(double));
+					checkCudaErrors(cusolverDnDpotrf(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_chol, dims[l], dev_chol_buffer, chol_bufferSize, dev_chol_info));
 					//cudaDeviceSynchronize();
-					//cudaMemcpy(&res, dev_chol_info, sizeof(float), cudaMemcpyDeviceToHost);
+					//cudaMemcpy(&res, dev_chol_info, sizeof(double), cudaMemcpyDeviceToHost);
 					//if (res) printf("warning:%d\n", res);
 				}
 			}
@@ -5022,19 +5022,19 @@ public:
 
 		for (int s = 0; s < sub_step; s++)
 		{
-			cublasStatus = cublasScopy(cublasHandle, number * 3, dev_X, 1, dev_old_X, 1);
+			cublasStatus = cublasDcopy(cublasHandle, number * 3, dev_X, 1, dev_old_X, 1);
 
 			// Step 1: Basic update
 			Basic_Update_Kernel << <blocksPerGrid, threadsPerBlock >> > (dev_X, dev_V, damping, t, number);
 			cudaErr = cudaGetLastError();
 
-			cublasStatus = cublasScopy(cublasHandle, number * 3, dev_X, 1, dev_inertia_X, 1);
+			cublasStatus = cublasDcopy(cublasHandle, number * 3, dev_X, 1, dev_inertia_X, 1);
 
 			cudaErr = cudaGetLastError();
 
 			if (enable_debug || (enable_benchmark & 1))
 			{
-				float min_E;
+				double min_E;
 				computeEnergy(&min_E, dev_target_X, t);
 				if ((enable_benchmark & 1) && benchmark)
 					fprintf(benchmark, "%.10f\n", min_E);
@@ -5045,20 +5045,20 @@ public:
 			}
 
 			// Our Step 2: MultiGrid Method
-			float running_time = 0;
-			float iter_time = 0;
+			double running_time = 0;
+			double iter_time = 0;
 
 			for (int it = 0; pd_iters == -1 || it < pd_iters; it++)
 			{
 				if (use_WHM)
 				{
-					cublasScopy(cublasHandle, 3 * number, dev_prev_X, 1, dev_prev_prev_X, 1);
-					cublasScopy(cublasHandle, 3 * number, dev_X, 1, dev_prev_X, 1);
+					cublasDcopy(cublasHandle, 3 * number, dev_prev_X, 1, dev_prev_prev_X, 1);
+					cublasDcopy(cublasHandle, 3 * number, dev_X, 1, dev_prev_X, 1);
 				}
 
 				if (use_Hessian)
 				{
-					cudaMemset(dev_MF_Val, 0, sizeof(float)*MF_nnz * 9);
+					cudaMemset(dev_MF_Val, 0, sizeof(double)*MF_nnz * 9);
 
 					Hessian_Kernel << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > \
 						(dev_MF_Val, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, lambda, mu, dev_tet_update_offset, tet_number);
@@ -5107,18 +5107,18 @@ public:
 						Csr_Hessian_Kernel << <(MF_PD_nnz + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > \
 							(dev_MF_PD_reordered_Val, dev_MF_Val, dev_MF_bsr2csr, dev_MF_LU_mapping, MF_PD_nnz);
 
-						//cudaMemcpy(MF_PD_reordered_Val, dev_MF_PD_reordered_Val, sizeof(float)*MF_PD_nnz, cudaMemcpyDeviceToHost);
+						//cudaMemcpy(MF_PD_reordered_Val, dev_MF_PD_reordered_Val, sizeof(double)*MF_PD_nnz, cudaMemcpyDeviceToHost);
 
-						//cusolverSpScsrluFactorHost(cusolverSpHandle, 3 * number, MF_PD_nnz, descr, \
+						//cusolverSpDcsrluFactorHost(cusolverSpHandle, 3 * number, MF_PD_nnz, descr, \
 						//	MF_PD_reordered_Val, MF_PD_reordered_rowPtr, MF_PD_reordered_colInd, MF_PD_info, 1.0, MF_PD_buffer);
 					}
 
 					for (int l = layer - 1; l >= 0; l--)
 					{
 						if (stored_as_dense[l])
-							cudaMemset(dev_UtAUs_Val[l], 0, sizeof(float)*dims[l] * dims[l]);
+							cudaMemset(dev_UtAUs_Val[l], 0, sizeof(double)*dims[l] * dims[l]);
 						else
-							cudaErr = cudaMemset(dev_UtAUs_Val[l], 0, sizeof(float)*UtAUs_nnz[l] * 144);
+							cudaErr = cudaMemset(dev_UtAUs_Val[l], 0, sizeof(double)*UtAUs_nnz[l] * 144);
 						if (l == layer - 1)
 						{
 							int n = UtAUs_half_num[l];
@@ -5133,13 +5133,13 @@ public:
 								UtAUs_dense_Mirror_Kernel << <(UtAUs_L_nnz[l] + UtAUs_threadPerBlock - 1) / UtAUs_threadPerBlock, UtAUs_threadPerBlock * 144 >> > \
 									(dev_UtAUs_Val[l], dev_UtAUs_L_offset[l], dev_UtAUs_mirror_offset[l], handles_num[l], UtAUs_L_nnz[l]);
 
-								cudaMemcpy(dev_UtAUs_chol, dev_UtAUs_Val[l], sizeof(float)*dims[l] * dims[l], cudaMemcpyDeviceToDevice);
+								cudaMemcpy(dev_UtAUs_chol, dev_UtAUs_Val[l], sizeof(double)*dims[l] * dims[l], cudaMemcpyDeviceToDevice);
 
 								UtAUs_Diag_Update_Third_Path_Kernel << <(handles_num[l] + UtAUs_threadPerBlock - 1) / UtAUs_threadPerBlock, dim3(144, UtAUs_threadPerBlock) >> > \
 									(dev_UtAUs_chol, dev_UtAUs_Diag_addition[l], handles_num[l], handles_num[l]);
 
-								//cublasSaxpy(cublasHandle, dims[l], &one, dev_chol_fixed, 1, dev_UtAUs_chol, dims[l] + 1);
-								checkCudaErrors(cusolverDnSpotrf(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_chol, dims[l], dev_chol_buffer, chol_bufferSize, dev_chol_info));
+								//cublasDaxpy(cublasHandle, dims[l], &one, dev_chol_fixed, 1, dev_UtAUs_chol, dims[l] + 1);
+								checkCudaErrors(cusolverDnDpotrf(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_chol, dims[l], dev_chol_buffer, chol_bufferSize, dev_chol_info));
 							}
 							else
 							{
@@ -5170,9 +5170,9 @@ public:
 							{
 								UtAU_2_UtAU_dense_Kernel << <(n + UtAUs_threadPerBlock - 1) / UtAUs_threadPerBlock, dim3(144, UtAUs_threadPerBlock) >> > \
 									(dev_UtAUs_Val[l], dev_UtAUs_Val[l + 1], dev_UtAUs_update_offset[l], handles_num[l], n);
-								cudaMemcpy(dev_UtAUs_chol, dev_UtAUs_Val[l], sizeof(float)*dims[l] * dims[l], cudaMemcpyDeviceToDevice);
-								//cublasSaxpy(cublasHandle, dims[l], &one, dev_chol_fixed, 1, dev_UtAUs_chol, dims[l] + 1);
-								checkCudaErrors(cusolverDnSpotrf(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_chol, dims[l], dev_chol_buffer, chol_bufferSize, dev_chol_info));
+								cudaMemcpy(dev_UtAUs_chol, dev_UtAUs_Val[l], sizeof(double)*dims[l] * dims[l], cudaMemcpyDeviceToDevice);
+								//cublasDaxpy(cublasHandle, dims[l], &one, dev_chol_fixed, 1, dev_UtAUs_chol, dims[l] + 1);
+								checkCudaErrors(cusolverDnDpotrf(cusolverDnHandle, CUBLAS_FILL_MODE_LOWER, dims[l], dev_UtAUs_chol, dims[l], dev_chol_buffer, chol_bufferSize, dev_chol_info));
 
 							}
 							//	cudaDeviceSynchronize();
@@ -5196,7 +5196,7 @@ public:
 					Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock >> > (dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, elasticity, tet_number);
 				}
 
-				cudaErr = cudaMemset(dev_B[layer], 0, sizeof(float) * dims[layer]);
+				cudaErr = cudaMemset(dev_B[layer], 0, sizeof(double) * dims[layer]);
 				Energy_Gradient_Kernel << <(number + threadsPerBlock-1) / threadsPerBlock/*blocksPerGrid*/, threadsPerBlock >> > (dev_B[layer], dev_Tet_Temp, dev_VTT, dev_vtt_num, \
 					dev_fixed, dev_more_fixed, dev_collision_fixed, dev_collision_normal, dev_fixed_X, dev_X, \
 					dev_index2vertex[layer], control_mag, collision_mag, number);
@@ -5205,11 +5205,11 @@ public:
 
 				if (check_gradient_convergence)
 				{
-					cublasScopy(cublasHandle, 3 * number, dev_B[layer], 1, dev_newton_gradient, 1);
+					cublasDcopy(cublasHandle, 3 * number, dev_B[layer], 1, dev_newton_gradient, 1);
 
 					// Check convergence: ||gradient||_inf < tolerance
 					int max_idx;
-					cublasIsamax(cublasHandle, 3 * number, dev_newton_gradient, 1, &max_idx);
+					cublasIdamax(cublasHandle, 3 * number, dev_newton_gradient, 1, &max_idx);
 					TYPE grad_max;
 					cudaMemcpy(&grad_max, dev_newton_gradient + (max_idx - 1), sizeof(TYPE), cudaMemcpyDeviceToHost);
 					grad_max = fabsf(grad_max);
@@ -5233,13 +5233,13 @@ public:
 					}
 				}
 
-				//cudaMemcpy(GRADIENT, dev_B[layer], sizeof(float) * 3 * number, cudaMemcpyDeviceToHost);
+				//cudaMemcpy(GRADIENT, dev_B[layer], sizeof(double) * 3 * number, cudaMemcpyDeviceToHost);
 
-				cudaErr = cudaMemcpy(dev_R[layer], dev_B[layer], sizeof(float)*dims[layer], cudaMemcpyDeviceToDevice);
+				cudaErr = cudaMemcpy(dev_R[layer], dev_B[layer], sizeof(double)*dims[layer], cudaMemcpyDeviceToDevice);
 
-				//float *temp_out = new float[dims[layer]];
-				//float *out = new float[dims[layer]];
-				//cudaMemcpy(temp_out, dev_B[layer], sizeof(float)*dims[layer], cudaMemcpyDeviceToHost);
+				//double *temp_out = new double[dims[layer]];
+				//double *out = new double[dims[layer]];
+				//cudaMemcpy(temp_out, dev_B[layer], sizeof(double)*dims[layer], cudaMemcpyDeviceToHost);
 				//for (int i = 0; i < number; i++)
 				//{
 				//	int v = index2vertex[layer][i];
@@ -5251,29 +5251,29 @@ public:
 
 				//if (it == 0)
 				//{
-				//	float eps = 1;
-				//	float E0;
+				//	double eps = 1;
+				//	double E0;
 				//	computeEnergy(&E0, dev_X, t);
 				//	cudaDeviceSynchronize();
 				//	printf("E0:%f\n", E0);
 
-				//	float *dx;
-				//	cudaMalloc(&dx, sizeof(float));
-				//	cudaMemcpy(dx, &eps, sizeof(float), cudaMemcpyHostToDevice);
+				//	double *dx;
+				//	cudaMalloc(&dx, sizeof(double));
+				//	cudaMemcpy(dx, &eps, sizeof(double), cudaMemcpyHostToDevice);
 				//	for (int i = 0; i < 10; i++)
 				//	{
-				//		cublasSaxpy(cublasHandle, 1, &one, dx, 1, dev_X + index2vertex[layer][i], 1);
+				//		cublasDaxpy(cublasHandle, 1, &one, dx, 1, dev_X + index2vertex[layer][i], 1);
 				//		computeEnergy(&E, dev_X, t);
 				//		cudaDeviceSynchronize();
 				//		printf("%.10f ", \
 				//			(E - E0)/eps
 				//			//E-E0
 				//		);
-				//		cublasSaxpy(cublasHandle, 1, &minus_one, dx, 1, dev_X + index2vertex[layer][i], 1);
+				//		cublasDaxpy(cublasHandle, 1, &minus_one, dx, 1, dev_X + index2vertex[layer][i], 1);
 				//	}
 				//	printf("\n");
-				//	float *temp = new float[10];
-				//	cudaMemcpy(temp, dev_B[layer], sizeof(float) * 10, cudaMemcpyDeviceToHost);
+				//	double *temp = new double[10];
+				//	cudaMemcpy(temp, dev_B[layer], sizeof(double) * 10, cudaMemcpyDeviceToHost);
 				//	for (int i = 0; i < 10; i++)
 				//		printf("%f ", temp[i]);
 				//	printf("\n");
@@ -5281,11 +5281,11 @@ public:
 
 				if (enable_debug || (enable_benchmark & 1))
 				{
-					cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &g_norm);
+					cublasStatus = cublasDdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &g_norm);
 					computeEnergy(&E, dev_X, t);
-					cudaMemcpy(dev_temp_X[layer], dev_X, sizeof(float) * 3 * number, cudaMemcpyDeviceToDevice);
-					cublasSaxpy(cublasHandle, 3 * number, &minus_one, dev_target_X, 1, dev_temp_X[layer], 1);
-					cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_temp_X[layer], 1, dev_temp_X[layer], 1, &e_norm);
+					cudaMemcpy(dev_temp_X[layer], dev_X, sizeof(double) * 3 * number, cudaMemcpyDeviceToDevice);
+					cublasDaxpy(cublasHandle, 3 * number, &minus_one, dev_target_X, 1, dev_temp_X[layer], 1);
+					cublasStatus = cublasDdot(cublasHandle, 3 * number, dev_temp_X[layer], 1, dev_temp_X[layer], 1, &e_norm);
 					if ((enable_benchmark & 1) && benchmark)
 						fprintf(benchmark, "%.10f %.10f %.10f %.10f\n", iter_time/*timer.Get_Time()*/, g_norm, E, e_norm);
 					if (enable_debug)
@@ -5295,7 +5295,7 @@ public:
 				}
 
 
-				cudaErr = cudaMemset(dev_deltaX[layer], 0, sizeof(float) * dims[layer]);
+				cudaErr = cudaMemset(dev_deltaX[layer], 0, sizeof(double) * dims[layer]);
 
 				int now_Layer = layer;
 
@@ -5304,7 +5304,7 @@ public:
 #ifdef SETTINGF
 				const TYPE v_cycle_tol = 1e-3;
 				TYPE initial_residual = 0.0;
-				cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &initial_residual);
+				cublasStatus = cublasDdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &initial_residual);
 				printf("* v_cycle initial residual: %e\n", initial_residual);
 				for (int v = 0; v < v_cycles; v++)
 				{
@@ -5339,7 +5339,7 @@ public:
 				}
 
 				TYPE residual = 0.0;
-				cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &residual);
+				cublasStatus = cublasDdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &residual);
 				printf("* v_cycle iteration %d residual: %e\n", v,residual);
 				
 				if (residual< initial_residual * v_cycle_tol)
@@ -5589,11 +5589,11 @@ public:
 				performGaussSeidelIteration(now_Layer, 1, tol);
 #endif
 
-				//float temp_norm;
-				//cublasSdot(cublasHandle, dims[layer], dev_R[layer], 1, dev_R[layer], 1, &temp_norm);
+				//double temp_norm;
+				//cublasDdot(cublasHandle, dims[layer], dev_R[layer], 1, dev_R[layer], 1, &temp_norm);
 				//printf("r_norm_2:%.10f\n", temp_norm);
 
-				//cudaMemcpy(temp_out, dev_deltaX[layer], sizeof(float)*dims[layer], cudaMemcpyDeviceToHost);
+				//cudaMemcpy(temp_out, dev_deltaX[layer], sizeof(double)*dims[layer], cudaMemcpyDeviceToHost);
 				//for (int i = 0; i < number; i++)
 				//{
 				//	int v = index2vertex[layer][i];
@@ -5620,26 +5620,26 @@ public:
 					if (it <= 10) omega = 1;
 					else if (it == 11) omega = 2 / (2 - rho * rho);
 					else omega = 4 / (4 - rho * rho*omega);
-					float p_1 = 1.0, p_2 = 1.0 - p_1;
-					float p_3 = omega, p_4 = 1.0 - omega;
-					cublasSscal(cublasHandle, 3 * number, &p_1, dev_X, 1);
-					cublasSaxpy(cublasHandle, 3 * number, &p_2, dev_prev_X, 1, dev_X, 1);
-					cublasSscal(cublasHandle, 3 * number, &p_3, dev_X, 1);
-					cublasSaxpy(cublasHandle, 3 * number, &p_4, dev_prev_prev_X, 1, dev_X, 1);
+					double p_1 = 1.0, p_2 = 1.0 - p_1;
+					double p_3 = omega, p_4 = 1.0 - omega;
+					cublasDscal(cublasHandle, 3 * number, &p_1, dev_X, 1);
+					cublasDaxpy(cublasHandle, 3 * number, &p_2, dev_prev_X, 1, dev_X, 1);
+					cublasDscal(cublasHandle, 3 * number, &p_3, dev_X, 1);
+					cublasDaxpy(cublasHandle, 3 * number, &p_4, dev_prev_prev_X, 1, dev_X, 1);
 				}
 			}
 
 			// Step 3: Finalizing update
-			cublasStatus = cublasSaxpy(cublasHandle, 3 * number, &minus_one, dev_X, 1, dev_old_X, 1);
-			float neg_inv_t = -1.0 / t;
-			cublasStatus = cublasSscal(cublasHandle, 3 * number, &neg_inv_t, dev_old_X, 1);
-			cublasStatus = cublasScopy(cublasHandle, 3 * number, dev_old_X, 1, dev_V, 1);
+			cublasStatus = cublasDaxpy(cublasHandle, 3 * number, &minus_one, dev_X, 1, dev_old_X, 1);
+			double neg_inv_t = -1.0 / t;
+			cublasStatus = cublasDscal(cublasHandle, 3 * number, &neg_inv_t, dev_old_X, 1);
+			cublasStatus = cublasDcopy(cublasHandle, 3 * number, dev_old_X, 1, dev_V, 1);
 
 			if (enable_benchmark & 1)
 				fprintf(benchmark, "\n");
 			if (enable_benchmark & 2)
 			{
-				cublasStatus = cublasSdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &g_norm);
+				cublasStatus = cublasDdot(cublasHandle, 3 * number, dev_R[layer], 1, dev_R[layer], 1, &g_norm);
 				fprintf(benchmark, "%.10f %.10f\n", timer.Get_Time(), g_norm);
 			}
 		}

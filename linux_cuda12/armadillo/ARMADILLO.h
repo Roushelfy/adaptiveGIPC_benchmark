@@ -106,14 +106,14 @@ public:
 		Read_Original_File(filename);
 		//Read_Original_File("armadillo_100K");
 		//Read_Original_File("longbar");
-		float temp;
-		fscanf(f, "%f", &temp);
+		double temp;
+		fscanf(f, "%lf", &temp);
 		Scale(temp);
 		Centralize();
 		printf("N: %d, %d\n", number, tet_number);
 
 		//Set fixed nodes
-		fscanf(f, "%f", &temp);
+		fscanf(f, "%lf", &temp);
 		Rotate_X(temp);
 #ifdef _FIXED
 		//// for armadillo
@@ -153,7 +153,7 @@ public:
 		//	if (X[v * 3 + 1] > 0.1)
 		//		fixed[v] = 1;
 #endif
-		fscanf(f, "%f", &temp);
+		fscanf(f, "%lf", &temp);
 		Rotate_X(temp);
 
 		
@@ -170,7 +170,7 @@ public:
 		damping = 1;
 
 		fscanf(f, "%d %d %d %d %d %d %d", &pd_iters, &use_Hessian, &use_WHM, &enable_PD, &use_true_gradient, &use_line_search, &check_gradient_convergence);
-		fscanf(f, "%f", relaxation);
+		fscanf(f, "%lf", relaxation);
 
 //		Read_Original_File("armadillo_10k.1");
 //		Scale(0.008);
@@ -249,7 +249,7 @@ public:
 		if (enable_debug) {
 			printf("V-cycles per iteration = %d\n", v_cycles);
 		}
-		fscanf(f, "%f", &rho);
+		fscanf(f, "%lf", &rho);
 		fscanf(f, "%d", &objects_num);
 		if (objects_num)
 		{
@@ -276,8 +276,8 @@ public:
 		}
 
 		// Read time_step if available
-		float temp_time_step;
-		if (fscanf(f, "%f", &temp_time_step) == 1) {
+		double temp_time_step;
+		if (fscanf(f, "%lf", &temp_time_step) == 1) {
 			time_step = temp_time_step;
 			printf("Loaded time_step = %f from setting.txt\n", time_step);
 		}
