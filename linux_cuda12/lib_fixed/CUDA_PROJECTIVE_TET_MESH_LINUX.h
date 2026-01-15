@@ -151,29 +151,29 @@ __device__ void Get_Rotation(double F[3][3], double R[3][3])
     for(int j=0; j<3; j++)
     for(int k=0; k<3; k++)
         C[i][j]+=F[k][i]*F[k][j];
-    
+
     double C2[3][3];
     memset(&C2[0][0], 0, sizeof(double)*9);
     for(int i=0; i<3; i++)
     for(int j=0; j<3; j++)
     for(int k=0; k<3; k++)
         C2[i][j]+=C[i][k]*C[j][k];
-    
+
     double det    =   F[0][0]*F[1][1]*F[2][2]+
                     F[0][1]*F[1][2]*F[2][0]+
                     F[1][0]*F[2][1]*F[0][2]-
                     F[0][2]*F[1][1]*F[2][0]-
                     F[0][1]*F[1][0]*F[2][2]-
                     F[0][0]*F[1][2]*F[2][1];
-    
+
     double I_c    =   C[0][0]+C[1][1]+C[2][2];
     double I_c2   =   I_c*I_c;
     double II_c   =   0.5*(I_c2-C2[0][0]-C2[1][1]-C2[2][2]);
     double III_c  =   det*det;
     double k      =   I_c2-3*II_c;
-    
+
     double inv_U[3][3];
-    if(k<1e-7f)
+    if(k<1e-10)
     {
         double inv_lambda=1.0/sqrt(I_c/3);
         memset(inv_U, 0, sizeof(double)*9);
@@ -191,15 +191,15 @@ __device__ void Get_Rotation(double F[3][3], double R[3][3])
         double phi = acos(value);
         double lambda2=(I_c+2*k_root*cos(phi/3))/3.0;
         double lambda=sqrt(lambda2);
-        
+
         double III_u = sqrt(III_c);
         if(det<0)   III_u=-III_u;
         double I_u = lambda + sqrt(-lambda2 + I_c + 2*III_u/lambda);
         double II_u=(I_u*I_u-I_c)*0.5;
-        
+
         double U[3][3];
         double inv_rate, factor;
-        
+
         inv_rate=1/(I_u*II_u-III_u);
         factor=I_u*III_u*inv_rate;
         
@@ -690,7 +690,7 @@ __global__ void Tet_Constraint_Kernel(const double* X, const int* Tet, const dou
 	double F[9], R[9], B[3], C[9];
 	double new_R[9];
 	dev_Matrix_Product_3(Ds, idm, F);
-	
+
 	Get_Rotation((double (*)[3])F, (double (*)[3])new_R);
 
 //	bool flag = false;
@@ -892,14 +892,14 @@ __global__ void TrueNewton_Elastic_Gradient_Kernel(
 
 	double E[9];
 	dev_Matrix_Product_3(Ft, F, E);
-	E[0] -= 1.0f; E[4] -= 1.0f; E[8] -= 1.0f;
-	for (int i = 0; i < 9; i++) E[i] *= 0.5f;
+	E[0] -= 1.0; E[4] -= 1.0; E[8] -= 1.0;
+	for (int i = 0; i < 9; i++) E[i] *= 0.5;
 
 	// S = λ*tr(E)*I + 2μ*E (Second Piola-Kirchhoff)
 	double tr_E = E[0] + E[4] + E[8];
 	double S[9];
 	for (int i = 0; i < 9; i++)
-		S[i] = 2.0f * mu * E[i];
+		S[i] = 2.0 * mu * E[i];
 	S[0] += lambda * tr_E;
 	S[4] += lambda * tr_E;
 	S[8] += lambda * tr_E;
@@ -912,7 +912,7 @@ __global__ void TrueNewton_Elastic_Gradient_Kernel(
 	double PDmT[9];
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++) {
-			PDmT[i * 3 + j] = 0.0f;
+			PDmT[i * 3 + j] = 0.0;
 			for (int k = 0; k < 3; k++)
 				PDmT[i * 3 + j] += P[i * 3 + k] * idm[j * 3 + k];
 		}
@@ -1109,12 +1109,12 @@ __device__ void compute_eigenvalues_3x3_symmetric(const double* A, double* lambd
 
 	// Characteristic polynomial: λ³ - I1·λ² + I2·λ - I3 = 0
 	// Use Cardano's formula
-	double p = I2 - I1*I1/3.0f;
-	double q = 2.0f*I1*I1*I1/27.0f - I1*I2/3.0f + I3;
+	double p = I2 - I1*I1/3.0;
+	double q = 2.0*I1*I1*I1/27.0 - I1*I2/3.0 + I3;
 
-	double discriminant = q*q/4.0f + p*p*p/27.0f;
+	double discriminant = q*q/4.0 + p*p*p/27.0;
 
-	if (discriminant > 0 || fabsf(p) < 1e-12f)
+	if (discriminant > 0 || fabs(p) < 1e-12)
 	{
 		// Use simpler approximation for nearly diagonal matrices
 		lambda[0] = a;
@@ -1124,13 +1124,13 @@ __device__ void compute_eigenvalues_3x3_symmetric(const double* A, double* lambd
 	else
 	{
 		// Three real roots
-		double r = sqrtf(-p*p*p/27.0f);
-		double phi = acosf(-q / (2.0f*r));
-		double s = 2.0f * powf(r, 1.0f/3.0f);
+		double r = sqrt(-p*p*p/27.0);
+		double phi = acos(-q / (2.0*r));
+		double s = 2.0 * pow(r, 1.0/3.0);
 
-		lambda[0] = I1/3.0f + s * cosf(phi/3.0f);
-		lambda[1] = I1/3.0f + s * cosf((phi + 2.0f*3.14159265f)/3.0f);
-		lambda[2] = I1/3.0f + s * cosf((phi + 4.0f*3.14159265f)/3.0f);
+		lambda[0] = I1/3.0 + s * cos(phi/3.0);
+		lambda[1] = I1/3.0 + s * cos((phi + 2.0*3.14159265358979323846)/3.0);
+		lambda[2] = I1/3.0 + s * cos((phi + 4.0*3.14159265358979323846)/3.0);
 	}
 }
 
@@ -1141,7 +1141,7 @@ __device__ void make_psd_3x3(double* H, double min_eig)
 	double A[9];
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
-			A[i*3 + j] = 0.5f * (H[i*3 + j] + H[j*3 + i]);
+			A[i*3 + j] = 0.5 * (H[i*3 + j] + H[j*3 + i]);
 
 	// For 3x3 case, use simplified eigenvalue projection
 	// Compute eigenvalues
@@ -1165,7 +1165,7 @@ __device__ void make_psd_3x3(double* H, double min_eig)
 	// Simple diagonal regularization (more stable than full EVD on GPU)
 	// Add shift to make smallest eigenvalue = min_eig
 	double min_lambda = fminf(fminf(lambda[0], lambda[1]), lambda[2]);
-	double shift = max(0.0f, min_eig - min_lambda);
+	double shift = max(0.0, min_eig - min_lambda);
 
 	A[0] += shift;
 	A[4] += shift;
@@ -1191,7 +1191,7 @@ __global__ void Make_Hessian_PD_Kernel(double *A_Val, const int *D_offset, int *
 	double A[9];
 	for (int r = 0; r < 3; r++)
 		for (int c = 0; c < 3; c++)
-			A[r * 3 + c] = 0.5f * (H[r*3 + c] + H[c*3 + r]);
+			A[r * 3 + c] = 0.5 * (H[r*3 + c] + H[c*3 + r]);
 
 	// Check if PD using Sylvester's criterion
 	double det1 = A[0];
@@ -1235,7 +1235,7 @@ __global__ void Check_Hessian_SPD_Kernel(const double *A_Val, const int *D_offse
 	bool symmetric = true;
 	for (int r = 0; r < 3; r++)
 		for (int c = r + 1; c < 3; c++)
-			if (fabsf(H[r * 3 + c] - H[c * 3 + r]) > 1e-5)
+			if (fabs(H[r * 3 + c] - H[c * 3 + r]) > 1e-5)
 				symmetric = false;
 
 	// Check positive definiteness using Sylvester's criterion
@@ -2615,13 +2615,13 @@ public:
 		err = cudaMemcpy(dev_prev_X,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		err = cudaMemcpy(dev_prev_prev_X,	X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		err = cudaMemcpy(dev_next_X,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
-		err = cudaMemcpy(dev_fixed,			fixed,		sizeof(TYPE)*number,		cudaMemcpyHostToDevice);
-		err = cudaMemset(dev_more_fixed,	0,			sizeof(TYPE)*number);
+		err = cudaMemcpy(dev_fixed,			fixed,		sizeof(int)*number,		cudaMemcpyHostToDevice);
+		err = cudaMemset(dev_more_fixed,	0,			sizeof(int)*number);
 		err = cudaMemcpy(dev_fixed_X,		fixed_X,	sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 
-		err = cudaMemcpy(dev_Dm,			Dm,			sizeof(int)*tet_number*9,	cudaMemcpyHostToDevice);
-		err = cudaMemcpy(dev_inv_Dm,		inv_Dm,		sizeof(int)*tet_number*9,	cudaMemcpyHostToDevice);
-		err = cudaMemcpy(dev_Vol,			Vol,		sizeof(int)*tet_number,		cudaMemcpyHostToDevice);
+		err = cudaMemcpy(dev_Dm,			Dm,			sizeof(TYPE)*tet_number*9,	cudaMemcpyHostToDevice);
+		err = cudaMemcpy(dev_inv_Dm,		inv_Dm,		sizeof(TYPE)*tet_number*9,	cudaMemcpyHostToDevice);
+		err = cudaMemcpy(dev_Vol,			Vol,		sizeof(TYPE)*tet_number,		cudaMemcpyHostToDevice);
 		err = cudaMemcpy(dev_Tet,			Tet,		sizeof(int)*tet_number*4,	cudaMemcpyHostToDevice);
 
 		err = cudaMemcpy(dev_M,				M,			sizeof(TYPE)*number,		cudaMemcpyHostToDevice);
@@ -5071,7 +5071,7 @@ public:
 					// Make Hessian diagonal blocks positive definite
 					cudaMemset(dev_non_pd_count, 0, sizeof(int));
 					Make_Hessian_PD_Kernel << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > \
-						(dev_MF_Val, dev_MF_D_offset, dev_non_pd_count, 1e-6f, number);
+						(dev_MF_Val, dev_MF_D_offset, dev_non_pd_count, 1e-6, number);
 					if (enable_debug)
 					{
 						int projected_count = 0;
@@ -5183,7 +5183,6 @@ public:
 					}
 				}
 
-
 				// Compute elastic gradient
 				if (use_true_gradient)
 				{
@@ -5212,7 +5211,7 @@ public:
 					cublasIdamax(cublasHandle, 3 * number, dev_newton_gradient, 1, &max_idx);
 					TYPE grad_max;
 					cudaMemcpy(&grad_max, dev_newton_gradient + (max_idx - 1), sizeof(TYPE), cudaMemcpyDeviceToHost);
-					grad_max = fabsf(grad_max);
+					grad_max = fabs(grad_max);
 
 					if (enable_debug)
 					{

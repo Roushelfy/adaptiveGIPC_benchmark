@@ -123,7 +123,7 @@ public:
 
 		//for armadillo 2
 		for (int v = 0; v < number; v++)
-			if (fabsf(X[v * 3 + 1] + 0.01) < 2 * (X[v * 3 + 2] - 0.2))
+			if (fabs(X[v * 3 + 1] + 0.01) < 2 * (X[v * 3 + 2] - 0.2))
 				fixed[v] = 1;
 
 		////for octopus
