@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 
-# Force CUDA 12.8
-set(CMAKE_CUDA_COMPILER /usr/local/cuda-12.8/bin/nvcc)
-set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-12.8)
+# CUDA architecture - MUST be set before project() for native CMake CUDA support
+# Common options: 60, 61, 70, 75, 80, 86, 89, 90
+set(CMAKE_CUDA_ARCHITECTURES "89" CACHE STRING "CUDA architectures")
 
 project(PainlessMG_Linux LANGUAGES CXX CUDA)
 
@@ -14,12 +14,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-# CUDA architecture - adjust based on your GPU
-# Common options: 60, 61, 70, 75, 80, 86, 89, 90
-set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA architectures")
-
-# Find required packages
-find_package(CUDA REQUIRED)
+# Use modern CMake CUDA Toolkit instead of deprecated FindCUDA
+find_package(CUDAToolkit REQUIRED)
 
 # OpenGL - use modern approach with components
 find_package(OpenGL REQUIRED COMPONENTS OpenGL GLX)
@@ -43,7 +39,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/lib_fixed
     ${CMAKE_CURRENT_SOURCE_DIR}/../lib
     ${CMAKE_CURRENT_SOURCE_DIR}/../external_lib/eigen
-    ${CUDA_INCLUDE_DIRS}
+    ${CUDAToolkit_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIRS}
     ${GLUT_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIRS}

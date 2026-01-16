@@ -5218,18 +5218,18 @@ public:
 						printf("[Debug] Iter %d: ||gradient||_inf = %.6e\n", it, grad_max);
 					}
 
-					const TYPE tol = 1e-3;
-					if (grad_max < tol)
-					{
-						if (enable_debug)
-							printf("Newton converged at iteration %d: ||grad||_inf = %.2e\n", it, grad_max);
-						break;
-					}
-					else
-					{
-						if (enable_debug)
-							printf("Continuing Newton: ||grad||_inf = %.2e\n", grad_max);
-					}
+					// const TYPE tol = 1e-3;
+					// if (grad_max < tol)
+					// {
+					// 	if (enable_debug)
+					// 		printf("Newton converged at iteration %d: ||grad||_inf = %.2e\n", it, grad_max);
+					// 	break;
+					// }
+					// else
+					// {
+					// 	if (enable_debug)
+					// 		printf("Continuing Newton: ||grad||_inf = %.2e\n", grad_max);
+					// }
 				}
 
 				//cudaMemcpy(GRADIENT, dev_B[layer], sizeof(double) * 3 * number, cudaMemcpyDeviceToHost);
@@ -5298,6 +5298,10 @@ public:
 
 				int now_Layer = layer;
 
+				cudaEvent_t start, stop;
+				cudaEventCreate(&start);
+				cudaEventCreate(&stop);
+				cudaEventRecord(start);
 				iter_timer.Start();
 
 #ifdef SETTINGF
@@ -5344,6 +5348,12 @@ public:
 				if (residual< initial_residual * v_cycle_tol)
 					break;
 				}
+
+				cudaEventRecord(stop);
+				cudaEventSynchronize(stop);
+				float solver_time;
+				cudaEventElapsedTime(&solver_time, start, stop);
+				printf("solver_time: %.6f\n", solver_time);
 
 				cudaDeviceSynchronize();
 				iter_time += iter_timer.Get_Time();
@@ -5604,6 +5614,27 @@ public:
 				//outputVector<TYPE>("benchmark\\X.txt", dims[layer], out);
 				//delete[] temp_out;
 				//delete[] out;
+
+				if (check_gradient_convergence)
+				{
+					if (it > 0)
+					{
+						int max_idx;
+						// in the armadillo case, this is equal to ipc_dt * bboxdiagsize * newton_tol
+						const TYPE tol = 1e-5;
+						cublasIdamax(cublasHandle, 3 * number, dev_deltaX[layer], 1, &max_idx);
+						TYPE dx_max;
+						cudaMemcpy(&dx_max, dev_deltaX[layer] + (max_idx - 1), sizeof(TYPE), cudaMemcpyDeviceToHost);
+						dx_max = fabs(dx_max);
+						printf("dx_max: %.6e\n", dx_max);
+						if (dx_max < tol)
+						{
+							if (enable_debug)
+								printf("Newton converged at iteration %d\n", it);
+							break;
+						}
+					}
+				}
 
 				if (use_line_search)
 				{
