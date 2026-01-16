@@ -8,12 +8,12 @@ set(ARMADILLO_SOURCES
 # Create executable
 add_executable(armadillo_sim ${ARMADILLO_SOURCES})
 
-# Link libraries
+# Link libraries using modern CMake CUDA targets
 target_link_libraries(armadillo_sim
-    ${CUDA_LIBRARIES}
-    ${CUDA_cusparse_LIBRARY}
-    ${CUDA_cublas_LIBRARY}
-    ${CUDA_cusolver_LIBRARY}
+    CUDA::cudart
+    CUDA::cusparse
+    CUDA::cublas
+    CUDA::cusolver
     ${OPENGL_LIBRARIES}
     GLUT::GLUT
     ${GLEW_LIBRARIES}

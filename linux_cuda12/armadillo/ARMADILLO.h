@@ -116,15 +116,20 @@ public:
 		fscanf(f, "%lf", &temp);
 		Rotate_X(temp);
 #ifdef _FIXED
-		//// for armadillo
-		//for (int v = 0; v < number; v++)
-		//	if(X[v*3+1]>0.465)		
-		//		fixed[v] = 1;
-
-		//for armadillo 2
+		// for armadillo
+		int fixed_count = 0;
 		for (int v = 0; v < number; v++)
-			if (fabs(X[v * 3 + 1] + 0.01) < 2 * (X[v * 3 + 2] - 0.2))
+			if (X[v * 3 + 1] > 0.51)
+			{
 				fixed[v] = 1;
+				fixed_count++;
+			}
+		printf("fixed_count: %d\n", fixed_count);
+
+		// //for armadillo 2
+		// for (int v = 0; v < number; v++)
+		// 	if (fabs(X[v * 3 + 1] + 0.01) < 2 * (X[v * 3 + 2] - 0.2))
+		// 		fixed[v] = 1;
 
 		////for octopus
 		//for (int v = 0; v < number; v++)
@@ -160,12 +165,13 @@ public:
 
 		//Translation(0.0, 0.65, 0.0);
 
+		// youngs modulus = 5e5, poisson ratio = 0.45
 		lambda = 0;
 		mu = 250;
 
 		//elasticity = 2.0*mu + lambda;/*18000000*/ //5000000
 		elasticity = 500*1.0;
-		control_mag = 1.0;		//500
+		control_mag = 1.0;
 		collision_mag = 1.0;
 		damping = 1;
 

@@ -60,9 +60,10 @@ bool	idle_render=false;
 bool	idle_scrnshot = false;
 bool	idle_export_obj = false;
 int		file_id=0;
-double	time_step=1.0/30.0;
+double	time_step=0.01;
 int		sub_step = 1;
 
+int frame = 0;
 
 ARMADILLO<double>		armadillo;
 int		select_v=-1;
@@ -87,7 +88,20 @@ void Update(TYPE t)
 		dir[1]=dir_length*dir[1];
 		dir[2]=dir_length*dir[2];
 	}
+	frame++;
+	printf("********** Frame: %d **********\n", frame);
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start);
 	armadillo.Update(t, 64, dir); //64
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float time;
+	cudaEventElapsedTime(&time, start, stop);
+	printf("Time: %f ms\n", time);
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////

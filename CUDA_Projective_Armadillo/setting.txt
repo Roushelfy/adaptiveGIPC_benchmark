@@ -1,18 +1,20 @@
-meshes\\Armadillo_10K.1
-benchmark\\test.txt
+meshes/Armadillo_10K.1
+benchmark/test.txt
 0
+1
 0.008 -0.2 1.2
-1 0 0 0
+1000 1 0 0 1 1 1
 1
 1
 50
 1 0 
-0 1 
-7
+0 1
+5
 GS 3
 DS
 Direct
 US
 GS 3
+1
 0.9995
 0
